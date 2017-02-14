@@ -165,10 +165,10 @@ public:
 	/////////////////////////////////////////////////////////////
 	// 패킷 만들기
 	/////////////////////////////////////////////////////////////
-	CPacket	*MakePacket_LoginResponse(st_PLAYER *pPlayer, BYTE Status);
-	CPacket *MakePacket_MoveSector(st_PLAYER *pPlayer);
-	CPacket *MakePacket_ChatMessage(st_PLAYER *pPlayer, WCHAR *szMessage, WORD iMessageSize);
-	CPacket *MakePacket_HeartBeat(void);
+	void	MakePacket_LoginResponse(CPacket *pPacket, __int64 iAccountNo, BYTE byStatus);
+	void	MakePacket_MoveSector(CPacket *pPacket, __int64 iAccountNo, short shSectorX, short shSectorY);
+	void	MakePacket_ChatMessage(CPacket *pPacket, __int64 iAccountNo, wchar_t *szID, wchar_t *szNickname, wchar_t *szMessage, WORD iMessageSize);
+	void	MakePacket_HeartBeat(CPacket *pPacket);
 
 	st_PLAYER *FindPlayer(CLIENT_ID clientID);
 
@@ -183,7 +183,6 @@ public:
 	/////////////////////////////////////////////////////////////
 	// 하트비트
 	/////////////////////////////////////////////////////////////
-	void	SendPacket_HeartBeat(void);
 
 
 	/////////////////////////////////////////////////////////////

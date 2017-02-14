@@ -43,10 +43,16 @@ int _tmain(int argc, _TCHAR* argv[])
 
 		wprintf_s(L"Accept Total : %I64u\n", loginServer._iAcceptTotal);
 		wprintf_s(L"Accept TPS : %d\n", loginServer._iAcceptTPS);
-		//wprintf_s(L"Update TPS : %d\n\n", loginServer._Monitor_UpdateTPS);
-
+		
 		wprintf_s(L"RecvPacket TPS : %d\n", loginServer._iRecvPacketTPS);
 		wprintf_s(L"SendPacket TPS : %d\n\n", loginServer._iSendPacketTPS);
+
+		wprintf_s(L"Login Success TPS : %d\n", loginServer._Monitor_LoginSuccessTPS);
+		wprintf_s(L"Login Wait : %d\n\n", loginServer._Monitor_LoginWait);
+
+		wprintf_s(L"Login Process Time Max : %d\n", loginServer._Monitor_LoginProcessTime_Max);
+		wprintf_s(L"Login Process Time Min : %d\n", loginServer._Monitor_LoginProcessTime_Min);
+		wprintf_s(L"Login Process Time Avr : %f\n\n", loginServer.GetLoginProcessAvg());
 	}
 
 	return 0;

@@ -190,6 +190,11 @@ bool CLanClient::WorkerThread_update(void)
 void CLanClient::SendPacket(CPacket *pPacket)
 {
 	// 내부 용도이므로 Encode는 필요 없다.
+	// 프로토콜이 안바뀐다면 이게 제일 좋겠지만 헤더가 바뀔 수도 있으니..
+	/*WORD wSize = 0;
+	wSize = pPacket->GetPayloadUseSize();
+	pPacket->InputHeader((char *)&wSize, sizeof(WORD));*/
+
 	pPacket->IncrementRefCount();
 	_SendQ.Enqueue(pPacket);
 
@@ -314,7 +319,6 @@ void CLanClient::RecvPost(bool bIncrementFlag)
 
 void CLanClient::PacketProc(void)
 {
-	CPacket *pPacket = CPacket::Alloc();
 	HEADER header;
 	unsigned int headerSize = sizeof(HEADER);
 
@@ -326,7 +330,9 @@ void CLanClient::PacketProc(void)
 			break;
 
 		// 컨텐츠에게 헤더를 뺀 정보만을 주기 위함
-		pPacket->Clear();
+		CPacket *pPacket = CPacket::Alloc();
+		pPacket->SetHeaderSize(2);
+
 		if (!this->_RecvQ.RemoveData(headerSize))
 		{
 			SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"RecvQ removedata error");
@@ -337,15 +343,17 @@ void CLanClient::PacketProc(void)
 		if (-1 == this->_RecvQ.Dequeue((char *)pPacket->GetPayloadPtr(), header.wSize))
 		{
 			SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"RecvQ dequeue error");
-			this->Disconnect(); 
+			this->Disconnect();
 			break;
 		}
+		else
+			pPacket->MoveWrite(header.wSize);
 
 		OnRecv(pPacket);
+		pPacket->Free();
 	}
 
 	// return false경우 처리가 필요함.
-	pPacket->Free();
 	return;
 }
 

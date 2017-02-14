@@ -55,11 +55,19 @@ void CLanClient_Chat::OnSend(int iSendSize)
 void CLanClient_Chat::SendPacket_LoginServerLogin(void)
 {
 	CPacket *pSendPacket = CPacket::Alloc();
-
 	MakePacket_LoginServerLogin(pSendPacket);
 	SendPacket(pSendPacket);
-	
 	pSendPacket->Free();
+	return;
+}
+
+void CLanClient_Chat::SendPacket_HeartBeat(BYTE threadType)
+{
+	CPacket *pSendPacket = CPacket::Alloc();
+	MakePacket_HeartBeat(pSendPacket, threadType);
+	SendPacket(pSendPacket);
+	pSendPacket->Free();
+	return;
 }
 
 void CLanClient_Chat::MakePacket_LoginServerLogin(CPacket *pSendPacket)
@@ -89,6 +97,19 @@ void CLanClient_Chat::MakePacket_ResponseNewClientLogin(CPacket *pSendPacket, __
 	header.wSize = (WORD)(pSendPacket->GetPayloadUseSize());
 	pSendPacket->InputHeader((char *)&header, sizeof(header));
 
+	return;
+}
+
+void CLanClient_Chat::MakePacket_HeartBeat(CPacket *pSendPacket, BYTE threadType)
+{
+	pSendPacket->SetHeaderSize(2);
+
+	*pSendPacket << (WORD)en_PACKET_SS_HEARTBEAT;
+	*pSendPacket << threadType;
+
+	HEADER header;
+	header.wSize = (WORD)(pSendPacket->GetPayloadUseSize());
+	pSendPacket->InputHeader((char *)&header, sizeof(header));
 	return;
 }
 

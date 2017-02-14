@@ -259,7 +259,7 @@ unsigned _stdcall CNetServer::AcceptThreadFunc(void *lpParam)
 		pSession->SendCount = 0;
 		pSession->Sending = FALSE;
 
-		if (NULL == CreateIoCompletionPort((HANDLE)pSession->ClientSock, pServer->_hIOCP, index, 0))
+		if (NULL == CreateIoCompletionPort((HANDLE)pSession->ClientSock, pServer->_hIOCP, (ULONG_PTR)pSession, 0))
 		{
 			SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"CreateIoCompletionPort() Error. ErrorNo : %d", WSAGetLastError());
 			closesocket(pSession->ClientSock);
@@ -285,90 +285,69 @@ unsigned _stdcall CNetServer::AcceptThreadFunc(void *lpParam)
 unsigned _stdcall CNetServer::WorkerThreadFunc(void *lpParam)
 {
 	CNetServer *pServer = (CNetServer *)lpParam;
+	pServer->WorkerThread_update();
+
+	return 0;
+}
+
+bool CNetServer::WorkerThread_update(void)
+{
 	SESSION *pSession = nullptr;
 	BOOL _bResult;
 	DWORD transferredBytes;
 	OVERLAPPED *tempOv = new OVERLAPPED;
-	unsigned long index = NULL;
 	__int64 iIOCount;
-	CPacket *pPacket = NULL;
-	int iResult;
 
 	while (true)
 	{
-		index = 0;
 		transferredBytes = 0;
 		ZeroMemory(tempOv, sizeof(OVERLAPPED));
 
-		_bResult = GetQueuedCompletionStatus(pServer->_hIOCP, &transferredBytes, (PULONG_PTR)&index, &tempOv, INFINITE);
+		_bResult = GetQueuedCompletionStatus(_hIOCP, &transferredBytes, (PULONG_PTR)&pSession, &tempOv, INFINITE);
 
-		if (NULL == tempOv)
+		if (NULL == tempOv && NULL == pSession && 0 == transferredBytes)
 		{
-			// index대신 session포인터를 넣어서 처리하자
-			// if(NULL == pSession && 0 == transferredBytes)
 			if (TRUE == _bResult && 0 == transferredBytes)
 			{
-				PostQueuedCompletionStatus(pServer->_hIOCP, 0, 0, NULL);
-				return 0;
+				PostQueuedCompletionStatus(this->_hIOCP, 0, 0, NULL);
+				return false;
 			}
 			else
 			{
 				// IOCP에러.
-				pServer->OnError(0, 0, L"Worker thread IOCP Error");
-				return -1;
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Worker thread IOCP error. ErrorNo : %d", GetLastError());
+				return false;
 			}
 		}
-		else
+
+		//if (NULL == tempOv && (SESSION *)1 == pSession && 1 == transferredBytes)
+		//{
+		//	// 하트비트
+		//	continue;
+		//}
+
+		if (0 == transferredBytes)
+			this->ClientDisconnect(pSession->ClientId);
+		else if (tempOv == &pSession->RecvOverlap)
 		{
-			pSession = &pServer->_aSession[index];
-
-			if (index != EXTRACTCLIENTINDEX(pSession->ClientId))
-				pServer->OnError(0, pSession->ClientId, L"Index Mismatch");
-
-			if (0 == transferredBytes)
-				pServer->ClientDisconnect(pSession->ClientId);
-			else if (tempOv == &pSession->RecvOverlap)
-			{
-					if (!pSession->RecvQ.MoveWrite(transferredBytes))
-					SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"RecvQ MoveWrite() Error.");
-
-					PROFILING_BEGIN(L"PacketProc");
-					pServer->PacketProc(pSession);
-					PROFILING_END(L"PacketProc");
-
-					PROFILING_BEGIN(L"RecvPost");
-					pServer->RecvPost(pSession, TRUE);
-					PROFILING_END(L"RecvPost");
-			}
-			else if (tempOv == &pSession->SendOverlap)
-			{
-				pServer->OnSend(pSession->ClientId, transferredBytes);
-
-				for (int i = 0; i < pSession->SendCount; ++i)
-				{
-					iResult = pSession->SendQ.Dequeue(&pPacket);
-
-					if (-1 == iResult)
-						SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"[CLIENT_ID : %d]SendQ Deqeueue Error in WorkerThread", pSession->ClientId);
-
-					pPacket->Free();
-				}
-
-				InterlockedExchange((long *)&pSession->Sending, FALSE);
-				pServer->SendPost(pSession);
-			}
-			/*else
-				pServer->ClientDisconnect(pSession->ClientId);*/
+			CompleteRecv(pSession, transferredBytes);
 		}
+		else if (tempOv == &pSession->SendOverlap)
+		{
+			CompleteSend(pSession, transferredBytes);
+		}
+		/*else
+		pServer->ClientDisconnect(pSession->ClientId);*/
 
 		iIOCount = InterlockedDecrement64(&pSession->IOReleaseCompare->IOCount);
 
 		if (0 == iIOCount)
-			pServer->ClientRelease(pSession);
+			this->ClientRelease(pSession);
 
 		Sleep(0);
 	}
-	return 0;
+
+	return true;
 }
 
 void CNetServer::SendPost(SESSION *pSession)
@@ -437,6 +416,43 @@ void CNetServer::SendPost(SESSION *pSession)
 			return;
 		}
 	}
+}
+
+void CNetServer::CompleteRecv(SESSION *pSession, DWORD transferredBytes)
+{
+	if (!pSession->RecvQ.MoveWrite(transferredBytes))
+		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"RecvQ MoveWrite() Error.");
+
+	PROFILING_BEGIN(L"PacketProc");
+	this->PacketProc(pSession);
+	PROFILING_END(L"PacketProc");
+
+	PROFILING_BEGIN(L"RecvPost");
+	this->RecvPost(pSession, TRUE);
+	PROFILING_END(L"RecvPost");
+
+	return;
+}
+
+void CNetServer::CompleteSend(SESSION *pSession, DWORD transferredBytes)
+{
+	CPacket *pPacket = nullptr;
+
+	this->OnSend(pSession->ClientId, transferredBytes);
+
+	for (int i = 0; i < pSession->SendCount; ++i)
+	{
+		pSession->SendQ.Dequeue(&pPacket);
+
+		/*if (-1 == iResult)
+			SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"[CLIENT_ID : %d]SendQ Deqeueue Error in WorkerThread", pSession->ClientId);*/
+
+		pPacket->Free();
+	}
+
+	InterlockedExchange((long *)&pSession->Sending, FALSE);
+	this->SendPost(pSession);
+	return;
 }
 
 void CNetServer::RecvPost(SESSION *pSession, bool incrementFlag)

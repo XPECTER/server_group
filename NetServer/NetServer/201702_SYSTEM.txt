@@ -1,15 +1,3 @@
-[SYSTEM][2017-02-13 23:27:03 / ERROR / 0000000001]//--------- Start ChatServer ---------//
-[SYSTEM][2017-02-13 23:27:04 / WARNG / 0000000002]connect to server failed. ErrorNo : 10061
-[SYSTEM][2017-02-13 23:27:04 / ERROR / 0000000003]LanClient_Chat connect failed
-[SYSTEM][2017-02-13 23:32:55 / ERROR / 0000000001]//--------- Start ChatServer ---------//
-[SYSTEM][2017-02-13 23:32:55 / DEBUG / 0000000002]the chatserver is connected to loginserver
-[SYSTEM][2017-02-13 23:33:43 / ERROR / 0000000001]//--------- Start ChatServer ---------//
-[SYSTEM][2017-02-13 23:33:44 / WARNG / 0000000002]connect to server failed. ErrorNo : 10061
-[SYSTEM][2017-02-13 23:33:44 / ERROR / 0000000003]LanClient_Chat connect failed
-[SYSTEM][2017-02-13 23:38:39 / ERROR / 0000000001]//--------- Start ChatServer ---------//
-[SYSTEM][2017-02-13 23:38:40 / WARNG / 0000000002]connect to server failed. ErrorNo : 10061
-[SYSTEM][2017-02-13 23:38:40 / ERROR / 0000000003]LanClient_Chat connect failed
-[SYSTEM][2017-02-13 23:39:41 / ERROR / 0000000001]//--------- Start ChatServer ---------//
-[SYSTEM][2017-02-13 23:39:41 / DEBUG / 0000000002]the chatserver is connected to loginserver
-[SYSTEM][2017-02-13 23:40:29 / ERROR / 0000000001]//--------- Start ChatServer ---------//
-[SYSTEM][2017-02-13 23:40:29 / DEBUG / 0000000002]the chatserver is connected to loginserver
+[SYSTEM][2017-02-15 05:55:39 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 06:03:09 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 07:44:21 / ERROR / 0000000001]//--------- Start ChatServer ---------//

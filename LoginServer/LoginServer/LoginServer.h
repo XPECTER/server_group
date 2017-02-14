@@ -6,6 +6,10 @@
 #define dfSERVER_TIMEOUT_TICK 30000
 #define dfUPDATE_TICK 10000
 
+#define dfADDR_LEN 16
+#define dfID_LEN 20
+#define dfNICK_LEN 20
+
 class CLanServer_Login;
 
 class CLoginServer : public CNetServer
@@ -76,7 +80,7 @@ public:
 	int					GetSessionCount(void) { return this->_playerPool.GetUseCount(); }
 	int					GetPlayerAllocCount(void) { return this->_playerPool.GetAllocCount(); }
 	int					GetPlayerUseCount(void) { return this->_playerPool.GetUseCount(); }
-
+	
 
 	/////////////////////////////////////////////////////////////
 	// White IP 관련
@@ -87,9 +91,8 @@ public:
 
 private:
 	st_PLAYER* FindPlayer(CLIENT_ID clientID);
-	//st_PLAYER* FindPlayer(__int64 accountNo);
 
-	void SendPacket_ResponseLogin(CLIENT_ID clientID, BYTE state);
+	void SendPacket_ResponseLogin(CLIENT_ID clientID, BYTE byState);
 
 protected:
 
@@ -97,8 +100,8 @@ protected:
 	bool				PacketProc_ReqLogin(CLIENT_ID ClientID, CPacket *pPacket);
 
 	// 패킷 생성부
-	bool				MakePacket_ResLogin(CPacket *pPacket, __int64 iAccountNo, WCHAR *szID, WCHAR *szNickname, BYTE byStatus);
-
+	void				MakePacket_ResLogin(CPacket *pPacket, __int64 iAccountNo, WCHAR *szID, WCHAR *szNickname, BYTE byStatus);
+	void				MakePacket_NewClientLogin(CPacket *pPacket, __int64 iAccountNo, char *sessionKey, __int64 iParam);
 
 
 protected:
@@ -115,9 +118,10 @@ protected:
 	//-------------------------------------------------------------
 	// 기타 모니터링용 변수,스레드 함수.
 	//-------------------------------------------------------------
-	long				_Monitor_UpdateTPS;
+	
+public :
 	long				_Monitor_LoginSuccessTPS;
-
+	long				_Monitor_UpdateTPS;
 	long				_Monitor_LoginWait;					// 로그인 패킷 수신 후 대기중인 수
 
 	long				_Monitor_LoginProcessTime_Max;		// 로그인 처리 시간 최대
@@ -125,7 +129,13 @@ protected:
 	long long			_Monitor_LoginProcessTime_Total;	// 총 합
 	long long			_Monitor_LoginProcessCall_Total;	// 로그인 처리 요청 총 합
 
-	
+	double				GetLoginProcessAvg(void) 
+	{
+		if (0 == _Monitor_LoginProcessCall_Total)
+			return 0;
+		else
+			return _Monitor_LoginProcessTime_Total / _Monitor_LoginProcessCall_Total; 
+	}
 private:
 
 	long				_Monitor_UpdateCounter;
@@ -133,11 +143,11 @@ private:
 
 
 	HANDLE				_hMonitorTPSThread;
-	static unsigned __stdcall	MonitorTPSThreadFunc(void *pParam);
+	static unsigned __stdcall	MonitorTPSThreadFunc(void *lpParam);
 	bool				MonitorTPSThread_update(void);
 
 	HANDLE				_hUpdateThread;
-	static unsigned __stdcall	UpdateThreadFunc(void *pParam);
+	static unsigned __stdcall	UpdateThreadFunc(void *lpParam);
 	bool				UpdateThread_update(void);
 
 	// LanServer (connected to GameServer, ChatServer)

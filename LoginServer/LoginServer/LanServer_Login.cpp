@@ -73,6 +73,7 @@ void CLanServer_Login::OnRecv(ClientID clientID, CPacket *pRecvPacket)
 			break;
 
 		case en_PACKET_SS_HEARTBEAT:
+			PacketProc_HeartBeat(clientID, pRecvPacket);
 			break;
 
 		default:
@@ -228,6 +229,11 @@ void CLanServer_Login::PacketProc_NewClientLogin(CLIENT_ID clientID, CPacket *pR
 	}
 
 	return;
+}
+
+void CLanServer_Login::PacketProc_HeartBeat(CLIENT_ID clientID, CPacket *pRecvPacket)
+{
+
 }
 
 unsigned __stdcall CLanServer_Login::TimeoutCheckThreadFunc(void *lpParam)

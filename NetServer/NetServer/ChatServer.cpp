@@ -31,23 +31,13 @@ unsigned __stdcall CChatServer::MonitorTPS_Thread(void *lpParam)
 
 bool CChatServer::MonitorTPS_Thread_update(void)
 {
-	__int64 updateTick = time(NULL);
-	__int64 currTick = 0;
-
 	while (true)
 	{
-		currTick = time(NULL);
+		this->_Monitor_UpdateTPS = this->_Monitor_UpdateTPS_Counter;
+		this->_Monitor_UpdateTPS_Counter = 0;
 
-		if (currTick - updateTick > 999)
-		{
-			this->_Monitor_UpdateTPS = this->_Monitor_UpdateTPS_Counter;
-			this->_Monitor_UpdateTPS_Counter = 0;
-
-			this->EnqueueMessage(dfUPDATE_MESSAGE_HEARTBEAT, 0, NULL);
-			updateTick = time(NULL);
-		}
-		else
-			Sleep(50);
+		//PostQueuedCompletionStatus(this->_hIOCP, 1, 1, NULL);
+		Sleep(998);
 	}
 
 	return true;
@@ -104,7 +94,6 @@ bool CChatServer::UpdateThread_update(void)
 			}
 			case dfUPDATE_MESSAGE_HEARTBEAT:
 			{
-				SendPacket_HeartBeat();
 				break;
 			}
 
@@ -121,7 +110,7 @@ bool CChatServer::UpdateThread_update(void)
 
 bool CChatServer::Start(void)
 {
-	this->_lanclient_Chat->Connect(L"0.0.0.0", g_ConfigData._szLoginServerIP, g_ConfigData._iLoginServerPort, g_ConfigData._iThreadNum, g_ConfigData._bLoginServerNagleOpt);
+	//this->_lanclient_Chat->Connect(L"0.0.0.0", g_ConfigData._szLoginServerIP, g_ConfigData._iLoginServerPort, g_ConfigData._iThreadNum, g_ConfigData._bLoginServerNagleOpt);
 	CNetServer::Start(g_ConfigData._szChatServerBindIP, g_ConfigData._iChatServerBindPort, g_ConfigData._iThreadNum, g_ConfigData._bChatServerNagleOpt, g_ConfigData._iClientMax);
 	
 	return true;
@@ -158,7 +147,6 @@ bool CChatServer::EnqueueMessage(int iMsgType, CLIENT_ID clientID, CPacket *pPac
 	msg->pPacket = pPacket;
 
 	_UpdateMessageQueue.Enqueue(msg);
-	//SetEvent(_hUpdateEvent);
 	return true;
 }
 
@@ -295,13 +283,9 @@ bool CChatServer::PacketProc(st_UPDATE_MESSAGE *msg)
 
 bool CChatServer::PacketProc_LoginRequest(st_PLAYER *pPlayer, CPacket *pPacket)
 {
-	/*
-	AccountNo, ID, NickName, SessionKey를 세팅한다. 응답처리도 여기서 보낸다.
-	로그인이 실패할 경우는 언제인가??
-	*/
 	_time64(&pPlayer->LastRecvPacket);
 
-	__int64 AccountNo = 0;
+	__int64 AccountNo;
 	*pPacket >> AccountNo;
 
 	if (0 > AccountNo)
@@ -315,18 +299,14 @@ bool CChatServer::PacketProc_LoginRequest(st_PLAYER *pPlayer, CPacket *pPacket)
 	pPacket->Dequeue((char*)pPlayer->szNick, sizeof(WCHAR) * dfNICK_MAX_LEN);
 	pPacket->Dequeue((char*)pPlayer->SessionKey, sizeof(char) * dfSESSION_KEY_BYTE_LEN);
 
-	CPacket *pResPacket = nullptr;
-	if (!CheckSessionKey(AccountNo, pPlayer->SessionKey))
-	{
-		pResPacket = MakePacket_LoginResponse(pPlayer, 0);
-	}
-	else
-	{
-		pResPacket = MakePacket_LoginResponse(pPlayer, 1);
-	}
+	CPacket *pSendPacket = CPacket::Alloc();
+	if (CheckSessionKey(AccountNo, pPlayer->SessionKey))
+		MakePacket_LoginResponse(pSendPacket, AccountNo, 1);
+	else 
+		MakePacket_LoginResponse(pSendPacket, AccountNo, 0);
 	
-	SendPacket_Unicast(pPlayer->ClientID, pResPacket);
-	pResPacket->Free();
+	SendPacket_Unicast(pPlayer->ClientID, pSendPacket);
+	pSendPacket->Free();
 	return true;
 }
 
@@ -337,14 +317,14 @@ bool CChatServer::PacketProc_MoveSector(st_PLAYER *pPlayer, CPacket *pPacket)
 	플레이어의 섹터를 세팅함 
 	*/
 
-	__int64 AccountNo = 0;
+	__int64 iAccountNo = 0;
 	WORD wX = 0;
 	WORD wY = 0;
 
-	*pPacket >> AccountNo;
-	if (AccountNo != pPlayer->AccountNo)
+	*pPacket >> iAccountNo;
+	if (iAccountNo != pPlayer->AccountNo)
 	{
-		SYSLOG(L"SECTOR", LOG::LEVEL_DEBUG, L"[AccountNo : %d] Player Mismatch", AccountNo);
+		SYSLOG(L"SECTOR", LOG::LEVEL_DEBUG, L"[AccountNo : %d] Player Mismatch", iAccountNo);
 		return false;
 	}
 
@@ -359,9 +339,10 @@ bool CChatServer::PacketProc_MoveSector(st_PLAYER *pPlayer, CPacket *pPacket)
 	{
 		if (EnterSector(clientID, wX, wY))
 		{
-			CPacket *pResPacket = MakePacket_MoveSector(pPlayer);
-			SendPacket_Unicast(clientID, pResPacket);
-			pResPacket->Free();
+			CPacket *pSendPacket = CPacket::Alloc();
+			MakePacket_MoveSector(pSendPacket, iAccountNo, wX, wY);
+			SendPacket_Unicast(clientID, pSendPacket);
+			pSendPacket->Free();
 			return true;
 		}
 		else
@@ -385,9 +366,10 @@ bool CChatServer::PacketProc_ChatMessage(st_PLAYER *pPlayer, CPacket *pPacket)
 	WORD wMessageLen;
 	*pPacket >> wMessageLen;
 	
-	CPacket *pResPacket = MakePacket_ChatMessage(pPlayer, (wchar_t *)pPacket->GetCurrPtr(), wMessageLen);
-	SendPacket_Around(pPlayer->ClientID, pResPacket, true);
-	pResPacket->Free();
+	CPacket *pSendPacket = CPacket::Alloc();
+	MakePacket_ChatMessage(pSendPacket, pPlayer->AccountNo, pPlayer->szID, pPlayer->szNick, (wchar_t *)pPacket->GetCurrPtr(), wMessageLen);
+	SendPacket_Around(pPlayer->ClientID, pSendPacket, true);
+	pSendPacket->Free();
 	return true;
 }
 
@@ -400,43 +382,43 @@ bool CChatServer::PacketProc_Heartbeat(st_PLAYER *pPlayer, CPacket *pPacket)
 	return true;
 }
 
-CPacket* CChatServer::MakePacket_LoginResponse(st_PLAYER *pPlayer, BYTE Status)
+void CChatServer::MakePacket_LoginResponse(CPacket *pPacket, __int64 iAccountNo, BYTE byStatus)
 {
-	CPacket *pPacket = CPacket::Alloc();
 	*pPacket << (WORD)en_PACKET_CS_CHAT_RES_LOGIN;
-	*pPacket << Status;
-	*pPacket << pPlayer->AccountNo;
-	return pPacket;
+	*pPacket << byStatus;
+	*pPacket << iAccountNo;
+	
+	return;
 }
 
-CPacket* CChatServer::MakePacket_MoveSector(st_PLAYER *pPlayer)
+void CChatServer::MakePacket_MoveSector(CPacket *pPacket, __int64 iAccountNo, short shSectorX, short shSectorY)
 {
-	CPacket *pPacket = CPacket::Alloc();
 	*pPacket << (WORD)en_PACKET_CS_CHAT_RES_SECTOR_MOVE;
-	*pPacket << pPlayer->AccountNo;
-	*pPacket << pPlayer->Sector.shSectorX;
-	*pPacket << pPlayer->Sector.shSectorY;
-	return pPacket;
+	*pPacket << iAccountNo;
+	*pPacket << shSectorX;
+	*pPacket << shSectorY;
+
+	return;
 }
 
-CPacket* CChatServer::MakePacket_ChatMessage(st_PLAYER *pPlayer, WCHAR *szMessage, WORD iMessageSize)
+void CChatServer::MakePacket_ChatMessage(CPacket *pPacket, __int64 iAccountNo, wchar_t *szID, wchar_t *szNickname, wchar_t *szMessage, WORD iMessageSize)
 {
-	CPacket *pPacket = CPacket::Alloc();
 	*pPacket << (WORD)en_PACKET_CS_CHAT_RES_MESSAGE;
-	*pPacket << pPlayer->AccountNo;
-	pPacket->Enqueue((char *)pPlayer->szID, sizeof(WCHAR) * dfID_MAX_LEN);
-	pPacket->Enqueue((char *)pPlayer->szNick, sizeof(WCHAR) * dfNICK_MAX_LEN);
+	*pPacket << iAccountNo;
+	pPacket->Enqueue((char *)szID, sizeof(wchar_t) * dfID_MAX_LEN);
+	pPacket->Enqueue((char *)szNickname, sizeof(wchar_t) * dfNICK_MAX_LEN);
 	*pPacket << iMessageSize;
 	pPacket->Enqueue((char *)szMessage, iMessageSize);
-	return pPacket;
+
+	return;
 }
 
-CPacket* CChatServer::MakePacket_HeartBeat(void)
+void CChatServer::MakePacket_HeartBeat(CPacket *pPacket)
 {
-	CPacket *pPacket = CPacket::Alloc();
 	*pPacket << (WORD)en_PACKET_SS_HEARTBEAT;
 	*pPacket << (BYTE)dfTHREAD_TYPE_WORKER;
-	return pPacket;
+
+	return;
 }
 
 bool CChatServer::EnterSector(CLIENT_ID clientID, short iSectorX, short iSectorY)
@@ -497,10 +479,6 @@ bool CChatServer::ValidSector(short iSectorX, short iSectorY)
 }
 
 
-void CChatServer::SendPacket_HeartBeat(void)
-{
-	CPacket *pPacket = MakePacket_HeartBeat();
-}
 
 void CChatServer::SendPacket_SectorOne(short iSectorX, short iSectorY, CPacket *pPacket, CLIENT_ID ExceptClientID)
 { 

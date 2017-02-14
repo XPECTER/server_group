@@ -104,9 +104,17 @@ private:
 	void ClientDisconnect(SESSION *pSession);		// shutdown(s, SD_BOTH)
 	void ClientRelease(SESSION *pSession);			// Session 해제
 
-	static unsigned _stdcall AcceptThreadFunc(void *lpParam);
-	static unsigned _stdcall WorkerThreadFunc(void *lpParam);
-	static unsigned _stdcall MonitorThreadFunc(void *lpParam);
+	void CompleteRecv(SESSION *pSession, DWORD transferredBytes);
+	void CompleteSend(SESSION *pSession, DWORD transferredBytes);
+
+	static unsigned _stdcall	AcceptThreadFunc(void *lpParam);
+	bool						AcceptThread_update(void);
+
+	static unsigned _stdcall	WorkerThreadFunc(void *lpParam);
+	bool						WorkerThread_update(void);
+
+	static unsigned _stdcall	MonitorThreadFunc(void *lpParam);
+	bool						MonitoringThread_update(void);
 
 	// 모니터링 용도
 public:
@@ -115,16 +123,15 @@ public:
 	int _iSendPacketTPS;
 	unsigned __int64 _iAcceptTotal;
 
-	// Log 
 protected:
 	FILE *_SystemErrorLogFile;
+	HANDLE _hIOCP;
 
-	// 멤버 변수
 private:
 	bool _bWorking;
 	bool _bStop;
 
-	HANDLE _hIOCP;
+	
 	HANDLE _hAcceptThread;
 	HANDLE *_hWorkerThread;
 	HANDLE _hMonitorThread;

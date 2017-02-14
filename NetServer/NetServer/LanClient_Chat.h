@@ -23,10 +23,12 @@ public:
 
 public:
 	void SendPacket_LoginServerLogin(void);
+	void SendPacket_HeartBeat(BYTE threadType);
 
 private:
 	void MakePacket_LoginServerLogin(CPacket *pSendPacket);
 	void MakePacket_ResponseNewClientLogin(CPacket *pSendPacket, __int64 accountNo, __int64 parameter);
+	void MakePacket_HeartBeat(CPacket *pSendPacket, BYTE threadType);
 
 	void PacketProc_RequestNewClientLogin(CPacket *pRecvPacket);
 

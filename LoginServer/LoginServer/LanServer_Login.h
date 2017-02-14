@@ -47,6 +47,7 @@ private:
 
 	void PacketProc_LoginServerLogin(CLIENT_ID clientID, CPacket *pRecvPacket);
 	void PacketProc_NewClientLogin(CLIENT_ID clientID, CPacket *pRecvPacket);
+	void PacketProc_HeartBeat(CLIENT_ID clientID, CPacket *pRecvPacket);
 
 private:
 	std::map<CLIENT_ID, st_SERVER_SESSION *> _sessionMap;

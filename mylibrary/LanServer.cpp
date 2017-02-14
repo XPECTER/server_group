@@ -452,16 +452,11 @@ void CLanServer::SendPost(SESSION *pSession)
 					if (pSession->SendQ.Peek(&buff, i))
 					{
 						wsabuf[i].buf = (*buff).GetBuffPtr();
-						wsabuf[i].len = (*buff).GetUseSize() + CPacket::dfHEADER_SIZE;
-
-						if (10 != wsabuf[i].len)
-						{
-							OnError(0, pSession->ClientId, L"WSASend WSABUF.len error");
-						}
+						wsabuf[i].len = (*buff).GetUseSize();
 						wsabufCount++;
 					}
 					else
-						OnError(10000, pSession->ClientId, L"Peek Error\n");
+						SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"SendPost Peek error");
 				}
 				else
 					break;
