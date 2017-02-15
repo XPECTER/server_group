@@ -247,8 +247,9 @@ protected:
 public:
 
 	CLockFreeQueue<st_UPDATE_MESSAGE *>	_UpdateMessageQueue;
-
 	long								_Monitor_UpdateTPS;
+
+	__int64	GetRecvCountFromLogin(void) { if(_lanclient_Chat == nullptr) return 0; else return this->_lanclient_Chat->_RecvAddSessionPacket; }
 
 private:
 	CLanClient_Chat						*_lanclient_Chat;

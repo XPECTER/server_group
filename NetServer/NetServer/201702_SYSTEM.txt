@@ -1,3 +1,52 @@
 [SYSTEM][2017-02-15 05:55:39 / ERROR / 0000000001]//--------- Start ChatServer ---------//
 [SYSTEM][2017-02-15 06:03:09 / ERROR / 0000000001]//--------- Start ChatServer ---------//
 [SYSTEM][2017-02-15 07:44:21 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 13:04:39 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 13:05:44 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 13:06:57 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 13:14:55 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 13:28:04 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 13:35:13 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 13:36:55 / WARNG / 0000000002]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 13:37:20 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 13:42:13 / WARNG / 0000000002]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 13:42:15 / WARNG / 0000000003]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 13:42:17 / WARNG / 0000000004]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 13:42:19 / WARNG / 0000000005]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 13:42:22 / WARNG / 0000000006]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 13:42:24 / WARNG / 0000000007]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 13:42:26 / WARNG / 0000000008]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 13:42:28 / WARNG / 0000000009]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 13:42:30 / WARNG / 0000000010]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 13:42:32 / WARNG / 0000000011]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 13:42:34 / WARNG / 0000000012]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 13:42:37 / WARNG / 0000000013]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 13:42:39 / WARNG / 0000000014]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 13:42:41 / WARNG / 0000000015]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 13:42:43 / WARNG / 0000000016]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 13:42:45 / WARNG / 0000000017]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 13:42:47 / WARNG / 0000000018]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 13:42:49 / WARNG / 0000000019]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 13:42:51 / WARNG / 0000000020]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 13:42:54 / WARNG / 0000000021]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 13:43:00 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 13:44:37 / WARNG / 0000000002]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 13:54:06 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 13:57:33 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 14:06:55 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 14:12:10 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 14:22:10 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 14:25:29 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 14:29:29 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 14:53:12 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 14:54:26 / WARNG / 0000000002]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 14:54:29 / WARNG / 0000000003]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 14:54:33 / WARNG / 0000000004]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-15 14:54:42 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 15:27:04 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 15:38:49 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 15:38:56 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 15:41:52 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 15:45:13 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 16:12:00 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-15 16:16:05 / ERROR / 0000000001]//--------- Start ChatServer ---------//

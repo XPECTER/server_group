@@ -57,7 +57,7 @@ protected:
 
 public:
 
-	bool	ResponseCheck(CLIENT_ID clientID, int serverType);
+	bool	ResponseCheck(__int64 accountNo, int serverType);
 
 	/////////////////////////////////////////////////////////////
 	// 사용자 관리함수들.  
@@ -118,7 +118,6 @@ protected:
 	//-------------------------------------------------------------
 	// 기타 모니터링용 변수,스레드 함수.
 	//-------------------------------------------------------------
-	
 public :
 	long				_Monitor_LoginSuccessTPS;
 	long				_Monitor_UpdateTPS;
@@ -129,6 +128,8 @@ public :
 	long long			_Monitor_LoginProcessTime_Total;	// 총 합
 	long long			_Monitor_LoginProcessCall_Total;	// 로그인 처리 요청 총 합
 
+	long long			_OnSendCallCount;
+
 	double				GetLoginProcessAvg(void) 
 	{
 		if (0 == _Monitor_LoginProcessCall_Total)
@@ -136,6 +137,9 @@ public :
 		else
 			return _Monitor_LoginProcessTime_Total / _Monitor_LoginProcessCall_Total; 
 	}
+
+	__int64 GetRecvCountFromChat(void);
+	
 private:
 
 	long				_Monitor_UpdateCounter;

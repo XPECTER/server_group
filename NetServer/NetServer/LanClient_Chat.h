@@ -32,6 +32,9 @@ private:
 
 	void PacketProc_RequestNewClientLogin(CPacket *pRecvPacket);
 
+public:
+	__int64		_RecvAddSessionPacket;
+
 private:
 	CChatServer *_pChatServer;
 

@@ -110,7 +110,7 @@ bool CChatServer::UpdateThread_update(void)
 
 bool CChatServer::Start(void)
 {
-	//this->_lanclient_Chat->Connect(L"0.0.0.0", g_ConfigData._szLoginServerIP, g_ConfigData._iLoginServerPort, g_ConfigData._iThreadNum, g_ConfigData._bLoginServerNagleOpt);
+	this->_lanclient_Chat->Connect(L"0.0.0.0", g_ConfigData._szLoginServerIP, g_ConfigData._iLoginServerPort, g_ConfigData._iThreadNum, g_ConfigData._bLoginServerNagleOpt);
 	CNetServer::Start(g_ConfigData._szChatServerBindIP, g_ConfigData._iChatServerBindPort, g_ConfigData._iThreadNum, g_ConfigData._bChatServerNagleOpt, g_ConfigData._iClientMax);
 	
 	return true;

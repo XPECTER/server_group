@@ -8,6 +8,7 @@
 CLanClient_Chat::CLanClient_Chat(CChatServer *pServerPtr)
 {
 	this->_pChatServer = pServerPtr;
+	this->_RecvAddSessionPacket = 0;
 }
 
 CLanClient_Chat::~CLanClient_Chat()
@@ -36,6 +37,7 @@ void CLanClient_Chat::OnRecv(CPacket *pRecvPacket)
 	switch (type)
 	{
 		case en_PACKET_SS_REQ_NEW_CLIENT_LOGIN:
+			InterlockedIncrement64(&this->_RecvAddSessionPacket);
 			PacketProc_RequestNewClientLogin(pRecvPacket);
 			break;
 
@@ -131,6 +133,6 @@ void CLanClient_Chat::PacketProc_RequestNewClientLogin(CPacket *pRecvPacket)
 	SendPacket(pSendPacket);
 
 	pSendPacket->Free();
-	SYSLOG(L"PACKET", LOG::LEVEL_DEBUG, L"[AccountNo : %d] client login request", accountNo);
+	SYSLOG(L"PACKET", LOG::LEVEL_ERROR , L"%05d", accountNo);
 	return;
 }

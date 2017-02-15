@@ -16,12 +16,14 @@ bool LOG::bDatabase = false;
 int LOG::iLogLevel;
 volatile __int64 LOG::logNo = 0;
 SRWLOCK LOG::_srwLock;
+CRITICAL_SECTION LOG::_cs;
 wchar_t g_szLogBuff[1024] = { 0, };
 LOG SysLog;
 
 LOG::LOG()
 {
 	InitializeSRWLock(&this->_srwLock);
+	InitializeCriticalSection(&this->_cs);
 }
 
 LOG::~LOG()
@@ -134,12 +136,14 @@ void LOG::printLog(WCHAR *category, int logLevel, WCHAR *fmt, ...)
 		WCHAR filename[256] = { 0, };
 		swprintf_s(filename, L"%04d%02d_%s.txt", t.tm_year + 1900, t.tm_mon + 1, category);
 
-		AcquireSRWLockExclusive(&_srwLock);
+		//AcquireSRWLockExclusive(&_srwLock);
+		EnterCriticalSection(&_cs);
 		_wfopen_s(&pf, filename, L"a");
 		fputws(buf, pf);
 		fputws(L"\n", pf);
 		fclose(pf);
-		ReleaseSRWLockExclusive(&_srwLock);
+		LeaveCriticalSection(&_cs);
+		//ReleaseSRWLockExclusive(&_srwLock);
 	}
 
 #ifdef MYSQL

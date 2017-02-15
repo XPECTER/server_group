@@ -68,6 +68,8 @@ int _tmain(int argc, _TCHAR* argv[])
 		wprintf_s(L"RecvPacket TPS : %d\n", chatserver._iRecvPacketTPS);
 		wprintf_s(L"SendPacket TPS : %d\n\n", chatserver._iSendPacketTPS);
 
+		wprintf_s(L"RecvPacket TPS from LoginServer : %d\n", chatserver.GetRecvCountFromLogin());
+
 		PrintConfig();
 	}
 

@@ -350,6 +350,43 @@ bool CNetServer::WorkerThread_update(void)
 	return true;
 }
 
+void CNetServer::CompleteRecv(SESSION *pSession, DWORD transferredBytes)
+{
+	if (!pSession->RecvQ.MoveWrite(transferredBytes))
+		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"RecvQ MoveWrite() Error.");
+
+	PROFILING_BEGIN(L"PacketProc");
+	this->PacketProc(pSession);
+	PROFILING_END(L"PacketProc");
+
+	PROFILING_BEGIN(L"RecvPost");
+	this->RecvPost(pSession, TRUE);
+	PROFILING_END(L"RecvPost");
+
+	return;
+}
+
+void CNetServer::CompleteSend(SESSION *pSession, DWORD transferredBytes)
+{
+	CPacket *pPacket = nullptr;
+
+	this->OnSend(pSession->ClientId, transferredBytes);
+
+	for (int i = 0; i < pSession->SendCount; ++i)
+	{
+		pSession->SendQ.Dequeue(&pPacket);
+
+		/*if (-1 == iResult)
+		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"[CLIENT_ID : %d]SendQ Deqeueue Error in WorkerThread", pSession->ClientId);*/
+
+		pPacket->Free();
+	}
+
+	InterlockedExchange((long *)&pSession->Sending, FALSE);
+	this->SendPost(pSession);
+	return;
+}
+
 void CNetServer::SendPost(SESSION *pSession)
 {
 	int iWSASendResult;
@@ -418,42 +455,7 @@ void CNetServer::SendPost(SESSION *pSession)
 	}
 }
 
-void CNetServer::CompleteRecv(SESSION *pSession, DWORD transferredBytes)
-{
-	if (!pSession->RecvQ.MoveWrite(transferredBytes))
-		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"RecvQ MoveWrite() Error.");
 
-	PROFILING_BEGIN(L"PacketProc");
-	this->PacketProc(pSession);
-	PROFILING_END(L"PacketProc");
-
-	PROFILING_BEGIN(L"RecvPost");
-	this->RecvPost(pSession, TRUE);
-	PROFILING_END(L"RecvPost");
-
-	return;
-}
-
-void CNetServer::CompleteSend(SESSION *pSession, DWORD transferredBytes)
-{
-	CPacket *pPacket = nullptr;
-
-	this->OnSend(pSession->ClientId, transferredBytes);
-
-	for (int i = 0; i < pSession->SendCount; ++i)
-	{
-		pSession->SendQ.Dequeue(&pPacket);
-
-		/*if (-1 == iResult)
-			SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"[CLIENT_ID : %d]SendQ Deqeueue Error in WorkerThread", pSession->ClientId);*/
-
-		pPacket->Free();
-	}
-
-	InterlockedExchange((long *)&pSession->Sending, FALSE);
-	this->SendPost(pSession);
-	return;
-}
 
 void CNetServer::RecvPost(SESSION *pSession, bool incrementFlag)
 {

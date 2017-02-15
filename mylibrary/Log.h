@@ -51,7 +51,7 @@ public:
 private :
 	static volatile __int64 logNo;
 	static SRWLOCK _srwLock;
-	
+	static CRITICAL_SECTION _cs;
 	// mysql
 #ifdef MYSQL
 private:

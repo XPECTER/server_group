@@ -63,6 +63,12 @@ void CLoginServer::OnClientLeave(CLIENT_ID clientID)
 {
 	AcquireSRWLockExclusive(&this->_srwLock);
 	st_PLAYER *pPlayer = FindPlayer(clientID);
+
+	if (nullptr == pPlayer)
+	{
+		crashDump.Crash();
+	}
+
 	time_t t = time(NULL) - pPlayer->_timeoutTick;
 
 	if (true != pPlayer->_bChatServerRecv)
@@ -98,7 +104,18 @@ void CLoginServer::OnRecv(CLIENT_ID clientID, CPacket *pPacket)
 
 void CLoginServer::OnSend(CLIENT_ID clientID, int sendsize)
 {
-	this->ClientDisconnect(clientID);
+	//this->ClientDisconnect(clientID);
+	AcquireSRWLockShared(&this->_srwLock);
+	st_PLAYER *pPlayer = FindPlayer(clientID);
+	ReleaseSRWLockShared(&this->_srwLock);
+
+	if (nullptr == pPlayer)
+		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"not exist player");
+
+	InterlockedIncrement64(&this->_OnSendCallCount);
+	InterlockedDecrement(&this->_Monitor_LoginWait);
+	InterlockedIncrement(&this->_Monitor_LoginSuccessCounter);
+	//SYSLOG(L"DEBUG", LOG::LEVEL_ERROR, L"%16x", clientID);
 	return;
 }
 
@@ -123,6 +140,8 @@ bool CLoginServer::InsertPlayer(CLIENT_ID clientID)
 {
 	st_PLAYER *pPlayer = this->_playerPool.Alloc();
 	pPlayer->_clientID = clientID;
+	pPlayer->_accountNo = -1;
+	pPlayer->_sessionKey = nullptr;
 	pPlayer->_timeoutTick = time(NULL);
 	pPlayer->_bChatServerRecv = false;
 	pPlayer->_bGameServerRecv = false;
@@ -182,15 +201,17 @@ bool CLoginServer::PacketProc_ReqLogin(CLIENT_ID clientID, CPacket *pPacket)
 
 	// 세션키 복사 안하려면 패킷의 포인터를 바로 찔러라
 
-	AcquireSRWLockExclusive(&this->_srwLock);
+	AcquireSRWLockShared(&this->_srwLock);
 	st_PLAYER *pPlayer = FindPlayer(clientID);
+	ReleaseSRWLockShared(&this->_srwLock);
 	pPlayer->_timeoutTick = time(NULL);
 	pPlayer->_accountNo = iAccountNo;
 	pPlayer->_sessionKey = sessionKey;
-	ReleaseSRWLockExclusive(&this->_srwLock);
+	
 
 	CPacket *pSendPacket = CPacket::Alloc();
-	MakePacket_NewClientLogin(pSendPacket, iAccountNo, sessionKey, clientID);
+	MakePacket_NewClientLogin(pSendPacket, pPlayer->_accountNo, pPlayer->_sessionKey, clientID);
+	//SYSLOG(L"LOG", LOG::LEVEL_ERROR, L"AccountNo : %05d, clientID : 0x%016x", iAccountNo, EXTRACTCLIENTID(clientID));
 	this->_lanserver_Login->SendPacket_ServerGroup(1, pSendPacket);
 	pSendPacket->Free();
 
@@ -198,10 +219,16 @@ bool CLoginServer::PacketProc_ReqLogin(CLIENT_ID clientID, CPacket *pPacket)
 	return true;
 }
 
-bool CLoginServer::ResponseCheck(CLIENT_ID clientID, int serverType)
+bool CLoginServer::ResponseCheck(__int64 accountNo, int serverType)
 {
+	st_PLAYER *pPlayer = nullptr;
 	AcquireSRWLockShared(&this->_srwLock);
-	st_PLAYER *pPlayer = FindPlayer(clientID);
+	for (auto iter = _playerMap.begin(); iter != _playerMap.end(); ++iter)
+	{
+		pPlayer = iter->second;
+		if (accountNo == pPlayer->_accountNo)
+			break;
+	}
 	ReleaseSRWLockShared(&this->_srwLock);
 
 	if (nullptr != pPlayer)
@@ -224,8 +251,7 @@ bool CLoginServer::ResponseCheck(CLIENT_ID clientID, int serverType)
 		if (true == pPlayer->_bChatServerRecv)// && true == pPlayer->_bGameServerRecv)
 		{
 			this->SendPacket_ResponseLogin(pPlayer->_clientID, dfLOGIN_STATUS_OK);
-			InterlockedDecrement(&this->_Monitor_LoginWait);
-			InterlockedIncrement(&this->_Monitor_LoginSuccessCounter);
+			
 		}
 
 		return true;
@@ -331,7 +357,7 @@ bool CLoginServer::UpdateThread_update(void)
 		// Lock걸고 Disconnect하지마라. SRWLock은 분명 데드락이 걸릴 것이다.
 		if (currTick - updateTick > dfUPDATE_TICK)
 		{
-			AcquireSRWLockExclusive(&_srwLock);
+			/*AcquireSRWLockExclusive(&_srwLock);
 
 			for (auto iter = this->_playerMap.begin(); iter != this->_playerMap.end(); ++iter)
 			{
@@ -342,7 +368,7 @@ bool CLoginServer::UpdateThread_update(void)
 				}
 			}
 
-			ReleaseSRWLockExclusive(&_srwLock);
+			ReleaseSRWLockExclusive(&_srwLock);*/
 			updateTick = time(NULL);
 		}
 		else
@@ -371,4 +397,12 @@ bool CLoginServer::MonitorTPSThread_update(void)
 		_Monitor_LoginSuccessCounter = 0;
 	}
 	return true;
+}
+
+__int64 CLoginServer::GetRecvCountFromChat(void)
+{
+	if (nullptr == this->_lanserver_Login)
+		return 0;
+	else
+		return this->_lanserver_Login->_RecvCountFromChat;
 }

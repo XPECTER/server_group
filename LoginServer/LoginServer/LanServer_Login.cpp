@@ -69,6 +69,7 @@ void CLanServer_Login::OnRecv(ClientID clientID, CPacket *pRecvPacket)
 			break;
 
 		case en_PACKET_SS_RES_NEW_CLIENT_LOGIN:
+			InterlockedIncrement64(&this->_RecvCountFromChat);
 			PacketProc_NewClientLogin(clientID, pRecvPacket);
 			break;
 
@@ -220,7 +221,7 @@ void CLanServer_Login::PacketProc_NewClientLogin(CLIENT_ID clientID, CPacket *pR
 
 	if (nullptr != pSession)
 	{
-		this->_pLoginServer->ResponseCheck(parameter, pSession->_serverType);
+		this->_pLoginServer->ResponseCheck(accountNo, pSession->_serverType);
 	}
 	else
 	{
