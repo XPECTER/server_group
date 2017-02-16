@@ -104,23 +104,9 @@ void CLoginServer::OnRecv(CLIENT_ID clientID, CPacket *pPacket)
 
 void CLoginServer::OnSend(CLIENT_ID clientID, int sendsize)
 {
-	//this->ClientDisconnect(clientID);
-	AcquireSRWLockShared(&this->_srwLock);
-	st_PLAYER *pPlayer = FindPlayer(clientID);
-	ReleaseSRWLockShared(&this->_srwLock);
-
-	if (nullptr == pPlayer)
-		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"not exist player");
-
 	InterlockedIncrement64(&this->_OnSendCallCount);
-
-	// ?? OnSend가 2번 호출되서 찍어봤더니 없어??
-	/*if (2 <= InterlockedIncrement(&pPlayer->_iSendCount))
-		SYSLOG(L"SYNC", LOG::LEVEL_ERROR, L"[CLIENT_ID : %d] OnSend call more 1");*/
-	
-	InterlockedDecrement(&this->_Monitor_LoginWait);
 	InterlockedIncrement(&this->_Monitor_LoginSuccessCounter);
-	//SYSLOG(L"DEBUG", LOG::LEVEL_ERROR, L"%16x", clientID);
+	this->ClientDisconnect(clientID);
 	return;
 }
 
@@ -332,16 +318,16 @@ void CLoginServer::MakePacket_ResLogin(CPacket *pSendPacket, __int64 iAccountNo,
 
 	if (iAccountNo < dfDUMMY_ACCOUNTNO_MAX)
 	{
-		pSendPacket->Enqueue((char *)pInfo->_gameServerIP_Dummy, 30);
+		pSendPacket->Enqueue((char *)pInfo->_gameServerIP_Dummy, dfSERVER_ADDR_LEN * 2);
 		*pSendPacket << (WORD)pInfo->_gameServerPort_Dummy;
-		pSendPacket->Enqueue((char *)pInfo->_chatServerIP_Dummy, 30);
+		pSendPacket->Enqueue((char *)pInfo->_chatServerIP_Dummy, dfSERVER_ADDR_LEN * 2);
 		*pSendPacket << (WORD)pInfo->_chatServerPort_Dummy;
 	}
 	else
 	{
-		pSendPacket->Enqueue((char *)pInfo->_gameServerIP, dfADDR_LEN * 2);
+		pSendPacket->Enqueue((char *)pInfo->_gameServerIP, dfSERVER_ADDR_LEN * 2);
 		*pSendPacket << (WORD)pInfo->_gameServerPort;
-		pSendPacket->Enqueue((char *)pInfo->_chatServerIP, dfADDR_LEN * 2);
+		pSendPacket->Enqueue((char *)pInfo->_chatServerIP, dfSERVER_ADDR_LEN * 2);
 		*pSendPacket << (WORD)pInfo->_chatServerPort;
 	}
 

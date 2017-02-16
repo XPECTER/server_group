@@ -297,7 +297,7 @@ bool CChatServer::PacketProc_LoginRequest(st_PLAYER *pPlayer, CPacket *pPacket)
 	pPlayer->AccountNo = AccountNo;
 	pPacket->Dequeue((char*)pPlayer->szID, sizeof(WCHAR) * dfID_MAX_LEN);
 	pPacket->Dequeue((char*)pPlayer->szNick, sizeof(WCHAR) * dfNICK_MAX_LEN);
-	pPacket->Dequeue((char*)pPlayer->SessionKey, sizeof(char) * dfSESSION_KEY_BYTE_LEN);
+	pPacket->Dequeue((char*)pPlayer->SessionKey, dfSESSION_KEY_BYTE_LEN);
 
 	CPacket *pSendPacket = CPacket::Alloc();
 	if (CheckSessionKey(AccountNo, pPlayer->SessionKey))
@@ -384,6 +384,7 @@ bool CChatServer::PacketProc_Heartbeat(st_PLAYER *pPlayer, CPacket *pPacket)
 
 void CChatServer::MakePacket_LoginResponse(CPacket *pPacket, __int64 iAccountNo, BYTE byStatus)
 {
+	pPacket->SetHeaderSize(5);
 	*pPacket << (WORD)en_PACKET_CS_CHAT_RES_LOGIN;
 	*pPacket << byStatus;
 	*pPacket << iAccountNo;
@@ -393,16 +394,18 @@ void CChatServer::MakePacket_LoginResponse(CPacket *pPacket, __int64 iAccountNo,
 
 void CChatServer::MakePacket_MoveSector(CPacket *pPacket, __int64 iAccountNo, short shSectorX, short shSectorY)
 {
+	pPacket->SetHeaderSize(5);
 	*pPacket << (WORD)en_PACKET_CS_CHAT_RES_SECTOR_MOVE;
 	*pPacket << iAccountNo;
-	*pPacket << shSectorX;
-	*pPacket << shSectorY;
+	*pPacket << (WORD)shSectorX;
+	*pPacket << (WORD)shSectorY;
 
 	return;
 }
 
 void CChatServer::MakePacket_ChatMessage(CPacket *pPacket, __int64 iAccountNo, wchar_t *szID, wchar_t *szNickname, wchar_t *szMessage, WORD iMessageSize)
 {
+	pPacket->SetHeaderSize(5);
 	*pPacket << (WORD)en_PACKET_CS_CHAT_RES_MESSAGE;
 	*pPacket << iAccountNo;
 	pPacket->Enqueue((char *)szID, sizeof(wchar_t) * dfID_MAX_LEN);

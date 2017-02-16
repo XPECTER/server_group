@@ -133,3 +133,18 @@
 [SYSTEM][2017-02-17 03:29:31 / WARNG / 0000000013]connect to server failed. ErrorNo : 10061
 [SYSTEM][2017-02-17 03:29:33 / WARNG / 0000000013]connect to server failed. ErrorNo : 10061
 [SYSTEM][2017-02-17 03:29:40 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-17 03:33:59 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-17 03:35:36 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-17 03:37:22 / WARNG / 0000000002]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-17 03:37:37 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-17 03:40:18 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-17 03:42:29 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-17 03:47:27 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-17 03:54:12 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-17 03:55:37 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-17 03:55:38 / WARNG / 0000000002]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-17 03:55:40 / WARNG / 0000000003]connect to server failed. ErrorNo : 10061
+[SYSTEM][2017-02-17 03:55:49 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-17 03:57:13 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-17 03:57:41 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-17 03:58:12 / ERROR / 0000000001]//--------- Start ChatServer ---------//
