@@ -83,9 +83,6 @@ bool LOG::connectDatabase(void)
 
 void LOG::printLog(WCHAR *category, int logLevel, WCHAR *fmt, ...)
 {
-	if (logLevel < iLogLevel)
-		return;
-
 	tm t;
 	WCHAR buf[1024] = { 0, };
 	time_t unixTime = time(NULL);
@@ -132,16 +129,17 @@ void LOG::printLog(WCHAR *category, int logLevel, WCHAR *fmt, ...)
 
 	if (true == bFile)
 	{
-		
 		WCHAR filename[256] = { 0, };
 		swprintf_s(filename, L"%04d%02d_%s.txt", t.tm_year + 1900, t.tm_mon + 1, category);
 
 		//AcquireSRWLockExclusive(&_srwLock);
 		EnterCriticalSection(&_cs);
-		_wfopen_s(&pf, filename, L"a");
-		fputws(buf, pf);
-		fputws(L"\n", pf);
-		fclose(pf);
+		if (0 == _wfopen_s(&pf, filename, L"a"))
+		{
+			fputws(buf, pf);
+			fputws(L"\n", pf);
+			fclose(pf);
+		}
 		LeaveCriticalSection(&_cs);
 		//ReleaseSRWLockExclusive(&_srwLock);
 	}

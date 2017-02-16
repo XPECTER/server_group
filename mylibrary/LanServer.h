@@ -146,6 +146,8 @@ public:
 	int _iRecvPacketTPS;
 	int _iSendPacketTPS;
 
+	int _iTotalRecvPacket;
+	int _iTotalSendPacket;
 // Log 
 protected:
 	FILE *SystemErrorLogFile;

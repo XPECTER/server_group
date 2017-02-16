@@ -94,7 +94,7 @@ void CLoginServer::OnRecv(CLIENT_ID clientID, CPacket *pPacket)
 	{
 		case en_PACKET_CS_LOGIN_REQ_LOGIN:
 			this->PacketProc_ReqLogin(clientID, pPacket);
-			SYSLOG(L"PACKET", LOG::LEVEL_DEBUG, L"0x%08x", clientID);
+			//SYSLOG(L"PACKET", LOG::LEVEL_DEBUG, L"0x%08x", clientID);
 			break;
 
 		default:
@@ -113,6 +113,11 @@ void CLoginServer::OnSend(CLIENT_ID clientID, int sendsize)
 		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"not exist player");
 
 	InterlockedIncrement64(&this->_OnSendCallCount);
+
+	// ?? OnSend가 2번 호출되서 찍어봤더니 없어??
+	/*if (2 <= InterlockedIncrement(&pPlayer->_iSendCount))
+		SYSLOG(L"SYNC", LOG::LEVEL_ERROR, L"[CLIENT_ID : %d] OnSend call more 1");*/
+	
 	InterlockedDecrement(&this->_Monitor_LoginWait);
 	InterlockedIncrement(&this->_Monitor_LoginSuccessCounter);
 	//SYSLOG(L"DEBUG", LOG::LEVEL_ERROR, L"%16x", clientID);
@@ -145,6 +150,7 @@ bool CLoginServer::InsertPlayer(CLIENT_ID clientID)
 	pPlayer->_timeoutTick = time(NULL);
 	pPlayer->_bChatServerRecv = false;
 	pPlayer->_bGameServerRecv = false;
+	pPlayer->_iSendCount = 0;
 
 	AcquireSRWLockExclusive(&this->_srwLock);
 	this->_playerMap.insert(std::pair<CLIENT_ID, st_PLAYER *>(clientID, pPlayer));
@@ -155,21 +161,25 @@ bool CLoginServer::InsertPlayer(CLIENT_ID clientID)
 
 bool CLoginServer::RemovePlayer(CLIENT_ID clientID)
 {
+	bool bResult;
+
 	AcquireSRWLockExclusive(&this->_srwLock);
 
 	auto iter = this->_playerMap.find(clientID);
 	if (iter == this->_playerMap.end())
 	{
-		ReleaseSRWLockExclusive(&this->_srwLock);
 		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"[CLIENT_ID : %d] not exist player in map", EXTRACTCLIENTID(clientID));
-		return false;
+		bResult = false;
+	}
+	else
+	{
+		this->_playerPool.Free(iter->second);
+		this->_playerMap.erase(iter);
+		bResult = true;
 	}
 
-	this->_playerPool.Free(iter->second);
-	this->_playerMap.erase(iter);
-
 	ReleaseSRWLockExclusive(&this->_srwLock);
-	return true;
+	return bResult;
 }
 
 CLoginServer::st_PLAYER* CLoginServer::FindPlayer(CLIENT_ID clientID)
@@ -204,19 +214,27 @@ bool CLoginServer::PacketProc_ReqLogin(CLIENT_ID clientID, CPacket *pPacket)
 	AcquireSRWLockShared(&this->_srwLock);
 	st_PLAYER *pPlayer = FindPlayer(clientID);
 	ReleaseSRWLockShared(&this->_srwLock);
-	pPlayer->_timeoutTick = time(NULL);
-	pPlayer->_accountNo = iAccountNo;
-	pPlayer->_sessionKey = sessionKey;
-	
 
-	CPacket *pSendPacket = CPacket::Alloc();
-	MakePacket_NewClientLogin(pSendPacket, pPlayer->_accountNo, pPlayer->_sessionKey, clientID);
-	//SYSLOG(L"LOG", LOG::LEVEL_ERROR, L"AccountNo : %05d, clientID : 0x%016x", iAccountNo, EXTRACTCLIENTID(clientID));
-	this->_lanserver_Login->SendPacket_ServerGroup(1, pSendPacket);
-	pSendPacket->Free();
+	if (nullptr == pPlayer)
+	{
+		SYSLOG(L"PACKET", LOG::LEVEL_ERROR, L"do not found player");
+		return false;
+	}
+	else
+	{
+		pPlayer->_timeoutTick = time(NULL);
+		pPlayer->_accountNo = iAccountNo;
+		pPlayer->_sessionKey = sessionKey;
 
-	InterlockedIncrement(&this->_Monitor_LoginWait);
-	return true;
+		CPacket *pSendPacket = CPacket::Alloc();
+		MakePacket_NewClientLogin(pSendPacket, pPlayer->_accountNo, pPlayer->_sessionKey, clientID);
+		//SYSLOG(L"LOG", LOG::LEVEL_ERROR, L"AccountNo : %05d, clientID : 0x%016x", iAccountNo, EXTRACTCLIENTID(clientID));
+		this->_lanserver_Login->SendPacket_ServerGroup(1, pSendPacket);
+		pSendPacket->Free();
+
+		InterlockedIncrement(&this->_Monitor_LoginWait);
+		return true;
+	}
 }
 
 bool CLoginServer::ResponseCheck(__int64 accountNo, int serverType)
@@ -248,35 +266,25 @@ bool CLoginServer::ResponseCheck(__int64 accountNo, int serverType)
 				return false;
 		}
 
-		if (true == pPlayer->_bChatServerRecv)// && true == pPlayer->_bGameServerRecv)
-		{
-			this->SendPacket_ResponseLogin(pPlayer->_clientID, dfLOGIN_STATUS_OK);
-			
-		}
-
+		this->SendPacket_ResponseLogin(pPlayer, dfLOGIN_STATUS_OK);
 		return true;
+
+		//if (true == pPlayer->_bChatServerRecv)// && true == pPlayer->_bGameServerRecv)
+		//{
+		//	
+		//	
+		//}
 	}
 	else
 	{
-		SYSLOG(L"ERROR", LOG::LEVEL_ERROR, L"Found Player is not exist");
+		SYSLOG(L"ERROR", LOG::LEVEL_DEBUG, L"Found Player is not exist");
 		return false;
 	}
 }
 
 
-void CLoginServer::SendPacket_ResponseLogin(CLIENT_ID clientID, BYTE byState)
+void CLoginServer::SendPacket_ResponseLogin(st_PLAYER *pPlayer, BYTE byState)
 {
-	AcquireSRWLockShared(&this->_srwLock);
-	st_PLAYER *pPlayer = FindPlayer(clientID);
-
-	if (nullptr == pPlayer)
-	{
-		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"not found player");
-		crashDump.Crash();
-	}
-
-	ReleaseSRWLockShared(&this->_srwLock);
-
 	CPacket *pPacket = CPacket::Alloc();
 	MakePacket_ResLogin(pPacket, pPlayer->_accountNo, L"", L"", byState);
 
@@ -301,14 +309,15 @@ void CLoginServer::MakePacket_NewClientLogin(CPacket *pSendPacket, __int64 iAcco
 	return;
 }
 
-void CLoginServer::MakePacket_ResLogin(CPacket *pPacket, __int64 iAccountNo, WCHAR *szID, WCHAR *szNickname, BYTE byStatus)
+void CLoginServer::MakePacket_ResLogin(CPacket *pSendPacket, __int64 iAccountNo, WCHAR *szID, WCHAR *szNickname, BYTE byStatus)
 {
 	// LoginServer가 클라이언트에게 보냄
 	// 로그인 요청에 대한 응답
 
-	*pPacket << (WORD)en_PACKET_CS_LOGIN_RES_LOGIN;
-	*pPacket << iAccountNo;
-	*pPacket << byStatus;
+	pSendPacket->SetHeaderSize(5);
+	*pSendPacket << (WORD)en_PACKET_CS_LOGIN_RES_LOGIN;
+	*pSendPacket << iAccountNo;
+	*pSendPacket << byStatus;
 
 	// 로그인 실패일때는 나머지를 넣어줘야 하는가?
 
@@ -316,26 +325,30 @@ void CLoginServer::MakePacket_ResLogin(CPacket *pPacket, __int64 iAccountNo, WCH
 	// ID넣고
 	// Nickname 넣고
 	wchar_t id[20] = { 0, };
-	pPacket->Enqueue((char *)id, dfID_LEN * 2); // ID
-	pPacket->Enqueue((char *)id, dfNICK_LEN * 2); // NICK
+	pSendPacket->Enqueue((char *)id, dfID_LEN * 2); // ID
+	pSendPacket->Enqueue((char *)id, dfNICK_LEN * 2); // NICK
 
 	st_SERVER_LINK_INFO *pInfo = &g_ConfigData._serverLinkInfo[0];
 
-	if (iAccountNo > dfDUMMY_ACCOUNTNO_MAX)
+	if (iAccountNo < dfDUMMY_ACCOUNTNO_MAX)
 	{
-		pPacket->Enqueue((char *)pInfo->_gameServerIP, dfADDR_LEN * 2);
-		*pPacket << (WORD)pInfo->_gameServerPort;
-		pPacket->Enqueue((char *)pInfo->_chatServerIP, dfADDR_LEN * 2);
-		*pPacket << (WORD)pInfo->_chatServerPort;
+		pSendPacket->Enqueue((char *)pInfo->_gameServerIP_Dummy, 30);
+		*pSendPacket << (WORD)pInfo->_gameServerPort_Dummy;
+		pSendPacket->Enqueue((char *)pInfo->_chatServerIP_Dummy, 30);
+		*pSendPacket << (WORD)pInfo->_chatServerPort_Dummy;
 	}
 	else
 	{
-		pPacket->Enqueue((char *)pInfo->_gameServerIP_Dummy, dfADDR_LEN * 2);
-		*pPacket << (WORD)pInfo->_gameServerPort_Dummy;
-		pPacket->Enqueue((char *)pInfo->_chatServerIP_Dummy, dfADDR_LEN * 2);
-		*pPacket << (WORD)pInfo->_chatServerPort_Dummy;
+		pSendPacket->Enqueue((char *)pInfo->_gameServerIP, dfADDR_LEN * 2);
+		*pSendPacket << (WORD)pInfo->_gameServerPort;
+		pSendPacket->Enqueue((char *)pInfo->_chatServerIP, dfADDR_LEN * 2);
+		*pSendPacket << (WORD)pInfo->_chatServerPort;
 	}
-	
+
+	BYTE szPacketContent[165] = { 0, };
+	memcpy_s(szPacketContent, 165, pSendPacket->GetBuffPtr(), 165);
+	SYSLOG(L"DEBUG", LOG::LEVEL_ERROR, L"%x", szPacketContent);
+
 	return;
 }
 
@@ -399,10 +412,13 @@ bool CLoginServer::MonitorTPSThread_update(void)
 	return true;
 }
 
-__int64 CLoginServer::GetRecvCountFromChat(void)
+
+int CLoginServer::GetLanSendPacketCount(void)
 {
-	if (nullptr == this->_lanserver_Login)
-		return 0;
-	else
-		return this->_lanserver_Login->_RecvCountFromChat;
+	return this->_lanserver_Login->_iTotalSendPacket;
+}
+
+int CLoginServer::GetLanRecvPacketCount(void)
+{
+	return this->_lanserver_Login->_iTotalRecvPacket;
 }

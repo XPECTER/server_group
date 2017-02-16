@@ -50,8 +50,9 @@ int _tmain(int argc, _TCHAR* argv[])
 		wprintf_s(L"Login Success TPS : %d\n", loginServer._Monitor_LoginSuccessTPS);
 		wprintf_s(L"Login Wait : %d\n\n", loginServer._Monitor_LoginWait);
 
-		wprintf_s(L"RecvCountFromChat : %I64u\n", loginServer.GetRecvCountFromChat());
 		wprintf_s(L"OnSend Call Count : %I64u\n", loginServer._OnSendCallCount);
+		wprintf_s(L"LanServer SendPacket Count : %d\n", loginServer.GetLanSendPacketCount());
+		wprintf_s(L"LanServer RecvPacket Count : %d\n", loginServer.GetLanSendPacketCount());
 		/*wprintf_s(L"Login Process Time Max : %d\n", loginServer._Monitor_LoginProcessTime_Max);
 		wprintf_s(L"Login Process Time Min : %d\n", loginServer._Monitor_LoginProcessTime_Min);
 		wprintf_s(L"Login Process Time Avr : %f\n\n", loginServer.GetLoginProcessAvg());*/

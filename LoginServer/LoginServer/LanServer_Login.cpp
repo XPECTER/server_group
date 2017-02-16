@@ -9,8 +9,7 @@
 CLanServer_Login::CLanServer_Login(CLoginServer *pLoginServer)
 {
 	_hTimeoutCheckThread = INVALID_HANDLE_VALUE;
-	InitializeSRWLock(&this->_sessionMapLock);
-	InitializeSRWLock(&this->_sessionSetListLock);
+	InitializeSRWLock(&this->_srwLock);
 
 	this->_pLoginServer = pLoginServer;
 	
@@ -32,29 +31,29 @@ void CLanServer_Login::OnClientJoin(ClientID clientID)
 	newSession->_clientID = clientID;
 	newSession->_timeoutTick = time(NULL);
 
-	AcquireSRWLockExclusive(&this->_sessionMapLock);
+	AcquireSRWLockExclusive(&this->_srwLock);
 	this->_sessionMap.insert(std::pair<CLIENT_ID, st_SERVER_SESSION*>(newSession->_clientID, newSession));
-	ReleaseSRWLockExclusive(&this->_sessionMapLock);
+	ReleaseSRWLockExclusive(&this->_srwLock);
 	return;
 }
 
 void CLanServer_Login::OnClientLeave(ClientID clientID)
 {
+	AcquireSRWLockExclusive(&this->_srwLock);
 	st_SERVER_SESSION *pSession = this->FindSession(clientID);
 
 	if (nullptr == pSession)
 	{
-		SYSLOG(L"ERROR", LOG::LEVEL_ERROR, L"Found Session is wrong");
+		SYSLOG(L"ERROR", LOG::LEVEL_DEBUG, L"Found Session is wrong");
 		return;
 	}
 	else
 	{
-		AcquireSRWLockExclusive(&this->_sessionMapLock);
 		delete pSession;
 		this->_sessionMap.erase(clientID);
-		ReleaseSRWLockExclusive(&this->_sessionMapLock);
-		return;
 	}
+	ReleaseSRWLockExclusive(&this->_srwLock);
+	return;
 }
 
 void CLanServer_Login::OnRecv(ClientID clientID, CPacket *pRecvPacket)
@@ -137,9 +136,9 @@ CLanServer_Login::st_SERVER_SESSION_SET* CLanServer_Login::FindSessionSet(int se
 
 void CLanServer_Login::SendPacket_ServerGroup(int serverNum, CPacket *pSendPacket)
 {
-	AcquireSRWLockShared(&this->_sessionMapLock);
+	AcquireSRWLockShared(&this->_srwLock);
 	st_SERVER_SESSION_SET *pSessionSet = FindSessionSet(serverNum);
-	ReleaseSRWLockShared(&this->_sessionMapLock);
+	ReleaseSRWLockShared(&this->_srwLock);
 
 	if (nullptr != pSessionSet)
 	{
@@ -166,13 +165,13 @@ void CLanServer_Login::PacketProc_LoginServerLogin(CLIENT_ID clientID, CPacket *
 	}
 	else
 	{
-		AcquireSRWLockExclusive(&this->_sessionMapLock);
+		AcquireSRWLockExclusive(&this->_srwLock);
 		st_SERVER_SESSION *pSession = this->FindSession(clientID);
 
 		if (nullptr == pSession)
 		{
-			ReleaseSRWLockExclusive(&this->_sessionMapLock);
-			SYSLOG(L"ERROR", LOG::LEVEL_ERROR, L"Found Session is wrong");
+			ReleaseSRWLockExclusive(&this->_srwLock);
+			SYSLOG(L"ERROR", LOG::LEVEL_DEBUG, L"Found Session is wrong");
 			crashDump.Crash();
 			return;
 		}
@@ -202,7 +201,7 @@ void CLanServer_Login::PacketProc_LoginServerLogin(CLIENT_ID clientID, CPacket *
 					pSessionSet->_chatServerID = clientID;
 			}
 
-			ReleaseSRWLockExclusive(&this->_sessionMapLock);
+			ReleaseSRWLockExclusive(&this->_srwLock);
 			return;
 		}
 	}
@@ -215,9 +214,9 @@ void CLanServer_Login::PacketProc_NewClientLogin(CLIENT_ID clientID, CPacket *pR
 
 	*pRecvPacket >> accountNo >> parameter;
 
-	AcquireSRWLockShared(&this->_sessionMapLock);
+	AcquireSRWLockShared(&this->_srwLock);
 	st_SERVER_SESSION *pSession = this->FindSession(clientID);
-	ReleaseSRWLockShared(&this->_sessionMapLock);
+	ReleaseSRWLockShared(&this->_srwLock);
 
 	if (nullptr != pSession)
 	{
@@ -225,7 +224,7 @@ void CLanServer_Login::PacketProc_NewClientLogin(CLIENT_ID clientID, CPacket *pR
 	}
 	else
 	{
-		SYSLOG(L"ERROR", LOG::LEVEL_ERROR, L"Found Session is NULL");
+		SYSLOG(L"ERROR", LOG::LEVEL_DEBUG, L"Found Session is NULL");
 		crashDump.Crash();
 	}
 
@@ -245,33 +244,33 @@ unsigned __stdcall CLanServer_Login::TimeoutCheckThreadFunc(void *lpParam)
 
 bool CLanServer_Login::TimeoutCheck_update(void)
 {
-	__int64 updateTick = time(NULL);
-	__int64 currTick = 0;
+	//__int64 updateTick = time(NULL);
+	//__int64 currTick = 0;
 
-	while (true)
-	{
-		// 종료로직도 추가?
+	//while (true)
+	//{
+	//	// 종료로직도 추가?
 
-		currTick = time(NULL);
-		if (currTick - currTick > dfUPDATE_TICK)
-		{
-			AcquireSRWLockExclusive(&this->_sessionMapLock);
+	//	currTick = time(NULL);
+	//	if (currTick - currTick > dfUPDATE_TICK)
+	//	{
+	//		AcquireSRWLockExclusive(&this->_sessionMapLock);
 
-			for (auto iter = this->_sessionMap.begin(); iter != this->_sessionMap.end(); ++iter)
-			{
-				if (currTick - iter->second->_timeoutTick > dfSERVER_TIMEOUT_TICK)
-				{
-					ClientDisconnect(iter->second->_clientID);
-					SYSLOG(L"ERROR", LOG::LEVEL_ERROR, L"\'%s\' Server disconnected : timeout", iter->second->_serverName);
-				}
-			}
-			
-			ReleaseSRWLockExclusive(&this->_sessionMapLock);
-			updateTick = time(NULL);
-		}
-		else
-			Sleep(50);
-	}
+	//		for (auto iter = this->_sessionMap.begin(); iter != this->_sessionMap.end(); ++iter)
+	//		{
+	//			if (currTick - iter->second->_timeoutTick > dfSERVER_TIMEOUT_TICK)
+	//			{
+	//				ClientDisconnect(iter->second->_clientID);
+	//				SYSLOG(L"ERROR", LOG::LEVEL_ERROR, L"\'%s\' Server disconnected : timeout", iter->second->_serverName);
+	//			}
+	//		}
+	//		
+	//		ReleaseSRWLockExclusive(&this->_sessionMapLock);
+	//		updateTick = time(NULL);
+	//	}
+	//	else
+	//		Sleep(50);
+	//}
 
-	return true;
+	//return true;
 }

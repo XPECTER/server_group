@@ -133,6 +133,6 @@ void CLanClient_Chat::PacketProc_RequestNewClientLogin(CPacket *pRecvPacket)
 	SendPacket(pSendPacket);
 
 	pSendPacket->Free();
-	SYSLOG(L"PACKET", LOG::LEVEL_ERROR , L"%05d", accountNo);
+	//SYSLOG(L"PACKET", LOG::LEVEL_ERROR , L"%05d", accountNo);
 	return;
 }

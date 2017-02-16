@@ -569,6 +569,7 @@ int CLanServer::PacketProc(SESSION *pSession)
 
 		OnRecv(pSession->ClientId, packet);
 		InterlockedIncrement((long *)&_iRecvPacketCounter);
+		InterlockedIncrement((long *)&_iTotalRecvPacket);
 	}
 
 	// return false경우 처리가 필요함.
@@ -588,6 +589,7 @@ void CLanServer::SendPacket(ClientID clientID, CPacket *pSendPacket)
 
 	SendPost(pSession);
 	InterlockedIncrement((long *)&_iSendPacketCounter);
+	InterlockedIncrement((long *)&_iTotalSendPacket);
 
 	ReleaseSessionLock(clientID);
 	return;

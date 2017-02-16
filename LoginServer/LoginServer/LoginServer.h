@@ -24,6 +24,8 @@ class CLoginServer : public CNetServer
 
 		bool _bGameServerRecv;
 		bool _bChatServerRecv;
+
+		long _iSendCount;
 	};
 
 public:
@@ -80,7 +82,8 @@ public:
 	int					GetSessionCount(void) { return this->_playerPool.GetUseCount(); }
 	int					GetPlayerAllocCount(void) { return this->_playerPool.GetAllocCount(); }
 	int					GetPlayerUseCount(void) { return this->_playerPool.GetUseCount(); }
-	
+	int					GetLanSendPacketCount(void);
+	int					GetLanRecvPacketCount(void);
 
 	/////////////////////////////////////////////////////////////
 	// White IP ฐüทร
@@ -92,7 +95,7 @@ public:
 private:
 	st_PLAYER* FindPlayer(CLIENT_ID clientID);
 
-	void SendPacket_ResponseLogin(CLIENT_ID clientID, BYTE byState);
+	void SendPacket_ResponseLogin(st_PLAYER *pPlayer, BYTE byState);
 
 protected:
 
@@ -138,7 +141,6 @@ public :
 			return _Monitor_LoginProcessTime_Total / _Monitor_LoginProcessCall_Total; 
 	}
 
-	__int64 GetRecvCountFromChat(void);
 	
 private:
 

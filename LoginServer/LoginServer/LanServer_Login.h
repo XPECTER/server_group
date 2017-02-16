@@ -52,8 +52,7 @@ public:
 private:
 	std::map<CLIENT_ID, st_SERVER_SESSION *> _sessionMap;
 	std::list<st_SERVER_SESSION_SET *> _sessionSetList;
-	SRWLOCK _sessionMapLock;
-	SRWLOCK _sessionSetListLock;
+	SRWLOCK _srwLock;
 
 	CLoginServer *_pLoginServer;
 	
