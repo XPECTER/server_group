@@ -80,7 +80,7 @@ struct st_PLAYER
 struct st_SESSION_KEY_NODE
 {
 	__int64 _accountNo;
-	char *_sessionKey;
+	char _sessionKey[64];
 	__int64 _updateTick;
 };
 

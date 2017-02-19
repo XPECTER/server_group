@@ -123,3 +123,4 @@ bool LoadConfigData(void);
 
 extern CCrashDump crashDump;
 extern CConfigData g_ConfigData;
+extern AccountDB g_AccountDB;
