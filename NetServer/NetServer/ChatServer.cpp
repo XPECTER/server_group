@@ -568,14 +568,15 @@ void CChatServer::AddSessionKey(__int64 accountNo, char *sessionKey)
 	{
 		st_SESSION_KEY_NODE *newNode = new st_SESSION_KEY_NODE;
 		newNode->_accountNo = accountNo;
-		newNode->_sessionKey = sessionKey;
+		//newNode->_sessionKey = sessionKey;
+		memcpy_s(newNode->_sessionKey, 64, sessionKey, 64);
 		newNode->_updateTick = time(NULL);
 		
 		this->_sessionKeyMap.insert(std::pair<__int64, st_SESSION_KEY_NODE *>(accountNo, newNode));
 	}
 	else
 	{
-		iter->second->_sessionKey = sessionKey;
+		memcpy_s(iter->second->_sessionKey, 64, sessionKey, 64);
 		iter->second->_updateTick = time(NULL);
 	}
 
@@ -585,18 +586,19 @@ void CChatServer::AddSessionKey(__int64 accountNo, char *sessionKey)
 
 bool CChatServer::CheckSessionKey(__int64 accountNo, char *sessionKey)
 {
-	bool bResult;
+	bool bResult = false;
 
 	AcquireSRWLockExclusive(&this->_srwLock);
 	auto iter = this->_sessionKeyMap.find(accountNo);
 
 	if (iter != this->_sessionKeyMap.end())
 	{
-		this->_sessionKeyMap.erase(iter);
-		bResult = true;
+		if (0 == memcmp(sessionKey, iter->second->_sessionKey, 64))
+		{
+			this->_sessionKeyMap.erase(iter);
+			bResult = true;
+		}
 	}
-	else
-		bResult = false;
 
 	ReleaseSRWLockExclusive(&this->_srwLock);
 	return bResult;

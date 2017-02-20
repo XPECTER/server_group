@@ -187,13 +187,15 @@ unsigned _stdcall CNetServer::MonitorThreadFunc(void *lpParam)
 
 unsigned _stdcall CNetServer::AcceptThreadFunc(void *lpParam)
 {
+	CNetServer *pServer = (CNetServer *)lpParam;
+	return pServer->AcceptThread_update();
+
 	SOCKET clientSock;
 	SOCKADDR_IN clientAddr;
 	int Len = sizeof(SOCKADDR_IN);
 	int iPort;
 	WCHAR szIP[16] = { 0, };
 	int index;
-	CNetServer *pServer = (CNetServer *)lpParam;
 	SESSION *pSession = nullptr;
 
 	// SOMAXCONN은 7FFFFFFFF지만 200으로 되어있음.
@@ -280,6 +282,102 @@ unsigned _stdcall CNetServer::AcceptThreadFunc(void *lpParam)
 	}
 
 	return 0;
+}
+
+bool CNetServer::AcceptThread_update(void)
+{
+	SOCKET clientSock;
+	SOCKADDR_IN clientAddr;
+	int Len = sizeof(SOCKADDR_IN);
+	int iPort;
+	WCHAR szIP[16] = { 0, };
+	int index;
+	SESSION *pSession = nullptr;
+
+	// SOMAXCONN은 7FFFFFFFF지만 200으로 되어있음.
+	// 윈도우의 SYC어택 때문에 클라이언트가 connect를 오해할 수 있다.
+	// TCP의 3방향 
+	if (0 != listen(this->_listenSock, SOMAXCONN))
+	{
+		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"listen() Error. ErrorNo : %d", WSAGetLastError());
+		return 0;
+		// 서버 죽여야지
+	}
+
+	while (true)
+	{
+		clientSock = accept(this->_listenSock, (SOCKADDR *)&clientAddr, &Len);
+		this->_iAcceptTotal++;
+
+		if (INVALID_SOCKET == clientSock)
+		{
+			if (this->_bStop)
+				return 1;
+
+			continue;
+		}
+
+		InetNtop(AF_INET, &clientAddr.sin_addr, szIP, 16);
+		iPort = ntohs(clientAddr.sin_port);
+
+		// 접속 거부된 IP이거나 Port이면 접속 불가처리
+		if (!this->OnConnectionRequest(szIP, iPort))
+		{
+			closesocket(clientSock);
+			continue;
+		}
+
+		// Keep alive option
+		tcp_keepalive keepAlive;
+		keepAlive.onoff = 1;
+		keepAlive.keepalivetime = 5000;
+		keepAlive.keepaliveinterval = 2000;
+		WSAIoctl(clientSock, SIO_KEEPALIVE_VALS, &keepAlive, sizeof(tcp_keepalive), 0, 0, 0, NULL, NULL);
+
+		index = -1;
+		PROFILING_BEGIN(L"SearchEmptySession");
+		this->_indexStack.Pop(&index);
+		PROFILING_END(L"SearchEmptySession");
+
+		if (-1 == index)
+		{
+			// 배열이 다 차서 다른 무언가를 해줘야함.
+			this->OnError(GetLastError(), -1, L"Session Array is full");
+
+			// 밑에 로직 추가
+			closesocket(clientSock);
+			continue;
+		}
+
+		pSession = &this->_aSession[index];
+		pSession->ClientId = MAKECLIENTID(index, this->_iClientID);
+		pSession->ClientSock = clientSock;
+		pSession->ClientAddr = clientAddr;
+		pSession->RecvQ.ClearBuffer();
+		pSession->SendCount = 0;
+		pSession->Sending = FALSE;
+
+		if (NULL == CreateIoCompletionPort((HANDLE)pSession->ClientSock, this->_hIOCP, (ULONG_PTR)pSession, 0))
+		{
+			SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"CreateIoCompletionPort() Error. ErrorNo : %d", WSAGetLastError());
+			closesocket(pSession->ClientSock);
+		}
+
+		InterlockedIncrement64(&pSession->IOReleaseCompare->IOCount);
+		InterlockedExchange64(&pSession->IOReleaseCompare->ReleaseFlag, 0);
+		this->OnClientJoin(pSession->ClientId);
+
+		PROFILING_BEGIN(L"RecvPost");
+		this->RecvPost(pSession, FALSE);
+		PROFILING_END(L"RecvPost");
+
+		this->_iAcceptCounter++;
+
+		this->_iClientID++;
+		InterlockedIncrement((long *)&this->_iClientCount);	// Worker Th도 접근 가능
+	}
+
+	return 1;
 }
 
 unsigned _stdcall CNetServer::WorkerThreadFunc(void *lpParam)
@@ -525,6 +623,8 @@ bool CNetServer::PacketProc(SESSION *pSession)
 			break;
 
 		CPacket *packet = CPacket::Alloc();
+		packet->SetHeaderSize(5);
+
 		if (-1 == pSession->RecvQ.Dequeue((char *)packet->GetBuffPtr(), header.shLen + sizeof(PACKET_HEADER)))
 			SYSLOG(L"SESSION", LOG::LEVEL_ERROR, L"[CLIENT_ID : %d] RecvQ Dequeue error", EXTRACTCLIENTID(pSession->ClientId));
 		else

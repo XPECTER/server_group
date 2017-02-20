@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "CommonProtocol.h"
+#include "DBConnect.h"
 #include "main.h"
 #include "LoginServer.h"
 #include "LanServer_Login.h"

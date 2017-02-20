@@ -1,27 +1,23 @@
-#include <Windows.h>
-#include <ctime>
-#include <stdarg.h>
-#include <strsafe.h>
-
-#ifdef MYSQL
-#include <mysql.h>
-#include <my_global.h>
-#endif
-
 #include "Log.h"
 
 bool LOG::bConsole = false;
 bool LOG::bFile = true;
 bool LOG::bDatabase = false;
 int LOG::iLogLevel;
-volatile __int64 LOG::logNo = 0;
+ __int64 LOG::logNo = 0;
 SRWLOCK LOG::_srwLock;
 CRITICAL_SECTION LOG::_cs;
 wchar_t g_szLogBuff[1024] = { 0, };
 LOG SysLog;
 
+//LOG* LOG::_instance = nullptr;
+//SRWLOCK LOG::_createSrwLock;
+
 LOG::LOG()
 {
+	this->logNo = 0;
+	
+	//memset(this->_szFolderName, 0, sizeof(wchar_t) * dfDIRECTORY_LEN);
 	InitializeSRWLock(&this->_srwLock);
 	InitializeCriticalSection(&this->_cs);
 }
@@ -31,44 +27,17 @@ LOG::~LOG()
 
 }
 
-void LOG::logSet(int mode, int logLevel)
-{
-	if (0 != (mode & OUT_CONSOLE))
-		bConsole = true;
-	else
-		bConsole = false;
-
-	if (0 != (mode & OUT_FILE))
-		bFile = true;
-	else
-		bFile = false;
-
-	if (0 != (mode & OUT_DATABASE))
-		bDatabase = true;
-	else
-		bDatabase = false;
-
-	iLogLevel = logLevel;
-
-	return;
-}
-
-void LOG::LogLevelChange(void)
-{
-	if (LOG::LEVEL_DEBUG == iLogLevel)
-	{
-		iLogLevel = LOG::LEVEL_WARNING;
-		return;
-	}
-	else if (LOG::LEVEL_WARNING == iLogLevel)
-	{
-		iLogLevel = LOG::LEVEL_ERROR;
-	}
-	else
-	{
-		iLogLevel = LOG::LEVEL_DEBUG;
-	}
-}
+//LOG* LOG::GetInstance(void)
+//{
+//	AcquireSRWLockExclusive(&_srwLock);
+//	if (nullptr == LOG::_instance)
+//	{
+//		LOG::_instance = new LOG;
+//	}
+//	ReleaseSRWLockExclusive(&_srwLock);
+//
+//	return LOG::_instance;
+//}
 
 bool LOG::connectDatabase(void)
 {
@@ -81,18 +50,17 @@ bool LOG::connectDatabase(void)
 #endif
 }
 
-void LOG::printLog(WCHAR *category, int logLevel, WCHAR *fmt, ...)
+void LOG::printLog(wchar_t *category, int logLevel, wchar_t *szLogString)//, ...)
 {
 	tm t;
-	WCHAR buf[1024] = { 0, };
+	wchar_t buf[1024] = { 0, };
 	time_t unixTime = time(NULL);
 	localtime_s(&t, &unixTime);
 	
-	va_list vl;
-	INT64 templogNo = InterlockedIncrement64(&logNo);
+	__int64 iLogNo = InterlockedIncrement64(&logNo);
 	int buffSize = 0;
 
-	WCHAR szLevel[10] = { 0, };
+	wchar_t szLevel[10] = { 0, };
 
 	switch (logLevel)
 	{
@@ -113,14 +81,15 @@ void LOG::printLog(WCHAR *category, int logLevel, WCHAR *fmt, ...)
 		}
 	}
 
-	buffSize = swprintf_s(buf, 1024, L"[%s][%04d-%02d-%02d %02d:%02d:%02d / %s / %010d]",
-		category, t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec, szLevel, templogNo);
-
-	va_start(vl, fmt);
+	swprintf_s(buf, 1024, L"[%s][%04d-%02d-%02d %02d:%02d:%02d / %s / %010d]%s",
+		category, t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec, szLevel, iLogNo, szLogString);
+	
+	
+	//va_list vl;
+	/*va_start(vl, fmt);
 	StringCchVPrintf(buf + buffSize, 1024 - buffSize, fmt, vl);
-	va_end(vl);
-
-	FILE *pf;
+	va_end(vl);*/
+	
 	
 	if (true == bConsole)
 	{
@@ -129,19 +98,20 @@ void LOG::printLog(WCHAR *category, int logLevel, WCHAR *fmt, ...)
 
 	if (true == bFile)
 	{
-		WCHAR filename[256] = { 0, };
-		swprintf_s(filename, L"%04d%02d_%s.txt", t.tm_year + 1900, t.tm_mon + 1, category);
-
-		//AcquireSRWLockExclusive(&_srwLock);
 		EnterCriticalSection(&_cs);
+
+		FILE *pf;
+		WCHAR filename[256] = { 0, };
+		
+		swprintf_s(filename, L"LOG\\%04d%02d_%s.txt", t.tm_year + 1900, t.tm_mon + 1, category);
 		if (0 == _wfopen_s(&pf, filename, L"a"))
 		{
 			fputws(buf, pf);
 			fputws(L"\n", pf);
 			fclose(pf);
 		}
+
 		LeaveCriticalSection(&_cs);
-		//ReleaseSRWLockExclusive(&_srwLock);
 	}
 
 #ifdef MYSQL
@@ -154,6 +124,6 @@ void LOG::printLog(WCHAR *category, int logLevel, WCHAR *fmt, ...)
 		// 결과에 따라서 테이블 만들고 다시 넣고 하면 됨.
 	}
 #endif
-
+	
 	return;
 }

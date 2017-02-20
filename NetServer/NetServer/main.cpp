@@ -291,6 +291,8 @@ bool LoadConfigData(void)
 			LOG::bFile = g_ConfigData._bPrintFile;
 			LOG::bDatabase = g_ConfigData._bPrinfDatabase;
 		}
+
+		//SYSLOG_SETDIRECTORY(L"LOG");
 	}
 
 	return true;

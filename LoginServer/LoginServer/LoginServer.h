@@ -2,9 +2,9 @@
 
 #define dfDUMMY_ACCOUNTNO_MAX 999999
 
-#define dfPLAYER_TIMEOUT_TICK 20000 
+#define dfPLAYER_TIMEOUT_TICK 5000 
 #define dfSERVER_TIMEOUT_TICK 30000
-#define dfUPDATE_TICK 10000
+#define dfUPDATE_TICK 1000
 
 #define dfADDR_LEN 16
 #define dfID_LEN 20
@@ -20,12 +20,13 @@ class CLoginServer : public CNetServer
 
 		__int64 _accountNo;
 		char *_sessionKey;
-		__int64 _timeoutTick;
+		/*__int64 _timeoutTick;*/
+		unsigned __int64 _timeoutTick;
 
-		bool _bGameServerRecv;
-		bool _bChatServerRecv;
+		long _bGameServerRecv;
+		long _bChatServerRecv;
 
-		long _iSendCount;
+		long _bSendFlag;
 	};
 
 public:
@@ -126,20 +127,15 @@ public :
 	long				_Monitor_UpdateTPS;
 	long				_Monitor_LoginWait;					// 로그인 패킷 수신 후 대기중인 수
 
-	long				_Monitor_LoginProcessTime_Max;		// 로그인 처리 시간 최대
-	long				_Monitor_LoginProcessTime_Min;		// 로그인 처리 시간 최소
+	long long			_Monitor_LoginProcessTime_Max;		// 로그인 처리 시간 최대
+	long long			_Monitor_LoginProcessTime_Min;		// 로그인 처리 시간 최소
 	long long			_Monitor_LoginProcessTime_Total;	// 총 합
 	long long			_Monitor_LoginProcessCall_Total;	// 로그인 처리 요청 총 합
 
 	long long			_OnSendCallCount;
+	double				_Monitor_LoginProcessTime_Avg;
 
-	double				GetLoginProcessAvg(void) 
-	{
-		if (0 == _Monitor_LoginProcessCall_Total)
-			return 0;
-		else
-			return _Monitor_LoginProcessTime_Total / _Monitor_LoginProcessCall_Total; 
-	}
+	double				GetLoginProcessAvg(void);
 
 	
 private:

@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "CommonProtocol.h"
+#include "DBConnect.h"
 #include "main.h"
 #include "LoginServer.h"
 #include "LanServer_Login.h"
@@ -7,6 +7,18 @@
 
 CLoginServer::CLoginServer()
 {
+	_Monitor_LoginSuccessTPS = 0;
+	_Monitor_UpdateTPS = 0;
+	_Monitor_LoginWait = 0;
+
+	_Monitor_LoginProcessTime_Max = 0;
+	_Monitor_LoginProcessTime_Min = 9999;
+	_Monitor_LoginProcessTime_Total = 0;
+	_Monitor_LoginProcessCall_Total = 0;
+
+	_OnSendCallCount = 0;
+	_Monitor_LoginProcessTime_Avg = 0;
+
 	InitializeSRWLock(&this->_srwLock);
 	this->_lanserver_Login = new CLanServer_Login(this);
 
@@ -69,16 +81,13 @@ void CLoginServer::OnClientLeave(CLIENT_ID clientID)
 		crashDump.Crash();
 	}
 
-	time_t t = time(NULL) - pPlayer->_timeoutTick;
-
-	if (true != pPlayer->_bChatServerRecv)
+	// 게임 서버 추가시 조건 추가
+	if (FALSE == InterlockedExchange(&pPlayer->_bChatServerRecv, TRUE)
+		&& TRUE == InterlockedExchange(&pPlayer->_bSendFlag, TRUE))
+	{
 		InterlockedDecrement(&this->_Monitor_LoginWait);
+	}
 	ReleaseSRWLockExclusive(&this->_srwLock);
-	
-	InterlockedCompareExchange(&this->_Monitor_LoginProcessTime_Max, t, t > this->_Monitor_LoginProcessTime_Max);
-	InterlockedCompareExchange(&this->_Monitor_LoginProcessTime_Min, t, t < this->_Monitor_LoginProcessTime_Min);
-	InterlockedAdd64(&this->_Monitor_LoginProcessTime_Total, t);
-	InterlockedIncrement64(&this->_Monitor_LoginProcessCall_Total);
 	
 	this->RemovePlayer(clientID);
 	return;
@@ -106,6 +115,7 @@ void CLoginServer::OnSend(CLIENT_ID clientID, int sendsize)
 {
 	InterlockedIncrement64(&this->_OnSendCallCount);
 	InterlockedIncrement(&this->_Monitor_LoginSuccessCounter);
+	
 	this->ClientDisconnect(clientID);
 	return;
 }
@@ -133,10 +143,11 @@ bool CLoginServer::InsertPlayer(CLIENT_ID clientID)
 	pPlayer->_clientID = clientID;
 	pPlayer->_accountNo = -1;
 	pPlayer->_sessionKey = nullptr;
-	pPlayer->_timeoutTick = time(NULL);
-	pPlayer->_bChatServerRecv = false;
-	pPlayer->_bGameServerRecv = false;
-	pPlayer->_iSendCount = 0;
+	/*pPlayer->_timeoutTick = time(NULL);*/
+	pPlayer->_timeoutTick = GetTickCount64();
+	pPlayer->_bChatServerRecv = FALSE;
+	pPlayer->_bGameServerRecv = FALSE;
+	pPlayer->_bSendFlag = FALSE;
 
 	AcquireSRWLockExclusive(&this->_srwLock);
 	this->_playerMap.insert(std::pair<CLIENT_ID, st_PLAYER *>(clientID, pPlayer));
@@ -208,7 +219,7 @@ bool CLoginServer::PacketProc_ReqLogin(CLIENT_ID clientID, CPacket *pPacket)
 	}
 	else
 	{
-		pPlayer->_timeoutTick = time(NULL);
+		pPlayer->_timeoutTick = GetTickCount64();
 		pPlayer->_accountNo = iAccountNo;
 		pPlayer->_sessionKey = sessionKey;
 
@@ -218,6 +229,7 @@ bool CLoginServer::PacketProc_ReqLogin(CLIENT_ID clientID, CPacket *pPacket)
 		this->_lanserver_Login->SendPacket_ServerGroup(1, pSendPacket);
 		pSendPacket->Free();
 
+		InterlockedExchange(&pPlayer->_bSendFlag, TRUE);
 		InterlockedIncrement(&this->_Monitor_LoginWait);
 		return true;
 	}
@@ -240,11 +252,11 @@ bool CLoginServer::ResponseCheck(__int64 accountNo, int serverType)
 		switch (serverType)
 		{
 			case dfSERVER_TYPE_GAME:
-				pPlayer->_bGameServerRecv = true;
+				InterlockedExchange(&pPlayer->_bGameServerRecv, TRUE);
 				break;
 
 			case dfSERVER_TYPE_CHAT:
-				pPlayer->_bChatServerRecv = true;
+				InterlockedExchange(&pPlayer->_bChatServerRecv, TRUE);
 				break;
 				
 			default:
@@ -253,13 +265,19 @@ bool CLoginServer::ResponseCheck(__int64 accountNo, int serverType)
 		}
 
 		this->SendPacket_ResponseLogin(pPlayer, dfLOGIN_STATUS_OK);
-		return true;
+		InterlockedDecrement(&this->_Monitor_LoginWait);
 
-		//if (true == pPlayer->_bChatServerRecv)// && true == pPlayer->_bGameServerRecv)
-		//{
-		//	
-		//	
-		//}
+		time_t t =GetTickCount64() - pPlayer->_timeoutTick;
+		InterlockedAdd64(&this->_Monitor_LoginProcessTime_Total, t);
+
+		if (t > this->_Monitor_LoginProcessTime_Max)
+			InterlockedExchange64(&this->_Monitor_LoginProcessTime_Max, t);
+
+		if (t < this->_Monitor_LoginProcessTime_Min)
+			InterlockedExchange64(&this->_Monitor_LoginProcessTime_Min, t);
+		
+		InterlockedIncrement64(&this->_Monitor_LoginProcessCall_Total);
+		return true;
 	}
 	else
 	{
@@ -387,17 +405,61 @@ unsigned __stdcall CLoginServer::MonitorTPSThreadFunc(void *lpParam)
 
 bool CLoginServer::MonitorTPSThread_update(void)
 {
+	unsigned __int64 currTick;
+	unsigned __int64 updateTick = GetTickCount64();
+	st_PLAYER *disconnectClient[50] = { nullptr, };
+	int index = 0;
+
 	while (true)
 	{
-		Sleep(998);
+		currTick = GetTickCount64();
+
+		if (currTick - updateTick > dfUPDATE_TICK)
+		{
+			AcquireSRWLockExclusive(&this->_srwLock);
+			for (auto iter = _playerMap.begin(); iter != _playerMap.end(); ++iter)
+			{
+				if (currTick - iter->second->_timeoutTick > dfPLAYER_TIMEOUT_TICK)
+				{
+					disconnectClient[index] = iter->second;
+					index++;
+
+					if (index >= 50)
+						break;
+				}
+			}
+			ReleaseSRWLockExclusive(&this->_srwLock);
+
+			for (int i = 0; i < index; ++i)
+			{
+				if (nullptr != disconnectClient[i])
+				{
+					ClientDisconnect(disconnectClient[i]->_clientID);
+				}
+				else
+					break;
+			}
+
+			index = 0;
+		}
+
+		if (0 == _Monitor_LoginProcessCall_Total)
+			_Monitor_LoginProcessTime_Avg = 0;
+		else
+			_Monitor_LoginProcessTime_Avg = (double)(_Monitor_LoginProcessTime_Total / _Monitor_LoginProcessCall_Total);
 
 		_Monitor_LoginSuccessTPS = _Monitor_LoginSuccessCounter;
 		
 		_Monitor_LoginSuccessCounter = 0;
+		Sleep(998);
 	}
 	return true;
 }
 
+double CLoginServer::GetLoginProcessAvg(void)
+{
+	return this->_Monitor_LoginProcessTime_Avg;
+}
 
 int CLoginServer::GetLanSendPacketCount(void)
 {

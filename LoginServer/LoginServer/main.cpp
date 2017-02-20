@@ -2,6 +2,7 @@
 //
 
 #include "stdafx.h"
+#include "DBConnect.h"
 #include "main.h"
 #include "LoginServer.h"
 #include "LanServer_Login.h"
@@ -17,10 +18,20 @@ CCrashDump crashDump;
 
 CConfigData g_ConfigData;
 CLoginServer loginServer;
+AccountDB g_AccountDB;
 
 int _tmain(int argc, _TCHAR* argv[])
 {
 	LoadConfigData();
+
+	if (!g_AccountDB.Connect(g_ConfigData._szAccountIP, g_ConfigData._szAccountUser, g_ConfigData._szAccountPassword, g_ConfigData._szAccountDBName, g_ConfigData._iAccountPort))
+	{
+		SYSLOG(L"DATABASE", LOG::LEVEL_ERROR, L"DBConnect Failed");
+		return 0;
+	}
+	else
+		g_AccountDB.ReadDB(enDB_ACCOUNT_READ_LOGIN_SESSION, NULL, NULL);
+	
 	loginServer.Start();
 
 	tm t;
@@ -35,7 +46,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		wprintf_s(L"\n===============================================================\n");
 
 		wprintf_s(L"Session Count : %d\n", loginServer.GetClientCount());
-		wprintf_s(L"Packet Pool Alloc Size : %d\n", CPacket::PacketPool.GetAllocCount());
+		wprintf_s(L"Packet Pool CHUNK Alloc Size : %d\n", CPacket::PacketPool.GetAllocCount());
 		wprintf_s(L"Using Packet : %d\n\n", CPacket::PacketPool.GetUseCount());
 
 		wprintf_s(L"Player Pool Alloc Size : %d\n", loginServer.GetPlayerAllocCount());
@@ -50,12 +61,12 @@ int _tmain(int argc, _TCHAR* argv[])
 		wprintf_s(L"Login Success TPS : %d\n", loginServer._Monitor_LoginSuccessTPS);
 		wprintf_s(L"Login Wait : %d\n\n", loginServer._Monitor_LoginWait);
 
-		wprintf_s(L"OnSend Call Count : %I64u\n", loginServer._OnSendCallCount);
+		/*wprintf_s(L"OnSend Call Count : %I64u\n", loginServer._OnSendCallCount);
 		wprintf_s(L"LanServer SendPacket Count : %d\n", loginServer.GetLanSendPacketCount());
-		wprintf_s(L"LanServer RecvPacket Count : %d\n", loginServer.GetLanSendPacketCount());
-		/*wprintf_s(L"Login Process Time Max : %d\n", loginServer._Monitor_LoginProcessTime_Max);
+		wprintf_s(L"LanServer RecvPacket Count : %d\n", loginServer.GetLanSendPacketCount());*/
+		wprintf_s(L"Login Process Time Max : %d\n", loginServer._Monitor_LoginProcessTime_Max);
 		wprintf_s(L"Login Process Time Min : %d\n", loginServer._Monitor_LoginProcessTime_Min);
-		wprintf_s(L"Login Process Time Avr : %f\n\n", loginServer.GetLoginProcessAvg());*/
+		wprintf_s(L"Login Process Time Avr : %.0f\n\n", loginServer.GetLoginProcessAvg());
 	}
 
 	return 0;
