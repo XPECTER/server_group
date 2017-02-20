@@ -148,3 +148,8 @@
 [SYSTEM][2017-02-17 03:57:13 / ERROR / 0000000001]//--------- Start ChatServer ---------//
 [SYSTEM][2017-02-17 03:57:41 / ERROR / 0000000001]//--------- Start ChatServer ---------//
 [SYSTEM][2017-02-17 03:58:12 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-17 13:41:48 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-17 13:41:48 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-17 13:41:48 / ERROR / 0000000002]bind() Error. ErrorNo : 10048
+[SYSTEM][2017-02-17 13:41:58 / ERROR / 0000000001]//--------- Start ChatServer ---------//
+[SYSTEM][2017-02-17 13:48:08 / ERROR / 0000000001]//--------- Start ChatServer ---------//
