@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "DBConnect.h"
+#include "DBConnectorTLS.h"
 #include "main.h"
 #include "LoginServer.h"
 #include "LanServer_Login.h"
@@ -172,7 +173,7 @@ void CLanServer_Login::PacketProc_LoginServerLogin(CLIENT_ID clientID, CPacket *
 		{
 			ReleaseSRWLockExclusive(&this->_srwLock);
 			SYSLOG(L"ERROR", LOG::LEVEL_DEBUG, L"Found Session is wrong");
-			crashDump.Crash();
+			CCrashDump::Crash();
 			return;
 		}
 		else
@@ -225,7 +226,7 @@ void CLanServer_Login::PacketProc_NewClientLogin(CLIENT_ID clientID, CPacket *pR
 	else
 	{
 		SYSLOG(L"ERROR", LOG::LEVEL_DEBUG, L"Found Session is NULL");
-		crashDump.Crash();
+		CCrashDump::Crash();
 	}
 
 	return;

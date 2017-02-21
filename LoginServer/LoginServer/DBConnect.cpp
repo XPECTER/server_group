@@ -1,13 +1,12 @@
 #include "stdafx.h"
 #include "DBConnect.h"
 
+
 CDBConnector::CDBConnector()
 {
 	mysql_init(&this->_connection);
 	this->_pConnection = nullptr;
 	this->_pResult = nullptr;
-
-	InitializeSRWLock(&this->_srwLock);
 }
 
 CDBConnector::~CDBConnector()
@@ -36,11 +35,23 @@ bool CDBConnector::Connect(wchar_t *szConnectIP, wchar_t *szUser, wchar_t *szPas
 		return true;
 }
 
-void CDBConnector::Query(char *szQuery)
+bool CDBConnector::Query(char *szQuery, ...)
 {
-	mysql_query(this->_pConnection, szQuery);
-	this->_pResult = mysql_store_result(this->_pConnection);
-	return;
+	char query[1024] = { 0, };
+	va_list vl;
+
+	va_start(vl, szQuery);
+	vsprintf_s(query, 1024, szQuery, vl);
+	va_end(vl);
+
+	//sprintf_s(this->_szLastQuery, 1024, query);
+	if (0 == mysql_query(&this->_connection, query))
+	{
+		this->_pResult = mysql_store_result(&this->_connection);
+		return true;
+	}
+	else
+		return false;
 }
 
 MYSQL_ROW CDBConnector::FetchRow(void)
@@ -48,44 +59,14 @@ MYSQL_ROW CDBConnector::FetchRow(void)
 	return mysql_fetch_row(this->_pResult);
 }
 
-void CDBConnector::Lock(void)
+void CDBConnector::FreeResult(void)
 {
-	AcquireSRWLockExclusive(&this->_srwLock);
+	mysql_free_result(this->_pResult);
 	return;
 }
 
-void CDBConnector::UnLock(void)
+int CDBConnector::GetLastError(void)
 {
-	ReleaseSRWLockExclusive(&this->_srwLock);
-	return;
+	return mysql_errno(this->_pConnection);
 }
 
-bool AccountDB::ReadDB(en_DB_ACTION_TYPE type, void *pIn, void *pOut)
-{
-	char szQuery[2048] = { 0, };
-	MYSQL_ROW row;
-
-	switch (type)
-	{
-		case enDB_ACCOUNT_READ_LOGIN_SESSION:
-			sprintf_s(szQuery, 2048, "SELECT * FROM `accountdb`.`status`;");
-			this->Query(szQuery);
-			row = this->FetchRow();
-			break;
-
-		case enDB_ACCOUNT_READ_WHITE_IP:
-			break;
-
-		case enDB_ACCOUNT_READ_RESET_STATUS_ALL:
-			sprintf_s(szQuery, 2048, "UPDATE `accountdb`.`status` SET status = 0;");
-			this->Query(szQuery);
-			break;
-	}
-
-	return true;
-}
-
-bool AccountDB::WriteDB(en_DB_ACTION_TYPE type, void *pIn)
-{
-	return true;
-}

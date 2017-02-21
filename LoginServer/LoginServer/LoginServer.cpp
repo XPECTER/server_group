@@ -1,5 +1,7 @@
 #include "stdafx.h"
+#include "DBTypeEnum.h"
 #include "DBConnect.h"
+#include "DBConnectorTLS.h"
 #include "main.h"
 #include "LoginServer.h"
 #include "LanServer_Login.h"
@@ -78,7 +80,7 @@ void CLoginServer::OnClientLeave(CLIENT_ID clientID)
 
 	if (nullptr == pPlayer)
 	{
-		crashDump.Crash();
+		CCrashDump::Crash();
 	}
 
 	// 게임 서버 추가시 조건 추가
@@ -193,11 +195,13 @@ CLoginServer::st_PLAYER* CLoginServer::FindPlayer(CLIENT_ID clientID)
 
 bool CLoginServer::PacketProc_ReqLogin(CLIENT_ID clientID, CPacket *pPacket)
 {
-	__int64 iAccountNo;
-	char sessionKey[64] = { 0, };
+	/*__int64 iAccountNo;
+	char sessionKey[64] = { 0, };*/
 
-	*pPacket >> iAccountNo;
-	pPacket->Dequeue(sessionKey, 64);
+	stDB_ACCOUNT_READ_LOGIN_SESSION_in input;
+
+	*pPacket >> input.AccountNo;
+	pPacket->Dequeue(input.SessionKey, 64);
 
 	// 내가 Select한 SessionKey와 유저가 가져온 SessionKey가 다르면 컷
 	//if (accountNo > dfDUMMY_ACCOUNTNO_MAX && SessionKey != DB에서 찾은 세션 키)
@@ -206,32 +210,43 @@ bool CLoginServer::PacketProc_ReqLogin(CLIENT_ID clientID, CPacket *pPacket)
 	//	return false;
 	//}
 
-	// 세션키 복사 안하려면 패킷의 포인터를 바로 찔러라
+	stDB_ACCOUNT_READ_LOGIN_SESSION_out output;
+	g_AccountDB.ReadDB(enDB_ACCOUNT_READ_LOGIN_SESSION, &input, &output);
 
-	AcquireSRWLockShared(&this->_srwLock);
-	st_PLAYER *pPlayer = FindPlayer(clientID);
-	ReleaseSRWLockShared(&this->_srwLock);
-
-	if (nullptr == pPlayer)
+	if (dfLOGIN_STATUS_OK != output.Status)
 	{
-		SYSLOG(L"PACKET", LOG::LEVEL_ERROR, L"do not found player");
-		return false;
+		CPacket *pSendPacket = CPacket::Alloc();
+		MakePacket_ResLogin(pSendPacket, input.AccountNo, output.szID, output.szNick, output.Status);
+		SendPacket(clientID, pSendPacket);
+		return true;
 	}
 	else
 	{
-		pPlayer->_timeoutTick = GetTickCount64();
-		pPlayer->_accountNo = iAccountNo;
-		pPlayer->_sessionKey = sessionKey;
+		AcquireSRWLockShared(&this->_srwLock);
+		st_PLAYER *pPlayer = FindPlayer(clientID);
+		ReleaseSRWLockShared(&this->_srwLock);
 
-		CPacket *pSendPacket = CPacket::Alloc();
-		MakePacket_NewClientLogin(pSendPacket, pPlayer->_accountNo, pPlayer->_sessionKey, clientID);
-		//SYSLOG(L"LOG", LOG::LEVEL_ERROR, L"AccountNo : %05d, clientID : 0x%016x", iAccountNo, EXTRACTCLIENTID(clientID));
-		this->_lanserver_Login->SendPacket_ServerGroup(1, pSendPacket);
-		pSendPacket->Free();
+		if (nullptr == pPlayer)
+		{
+			SYSLOG(L"PACKET", LOG::LEVEL_ERROR, L"do not found player");
+			return false;
+		}
+		else
+		{
+			pPlayer->_timeoutTick = GetTickCount64();
+			pPlayer->_accountNo = input.AccountNo;
+			pPlayer->_sessionKey = input.SessionKey; // 얘 지역이라 없어지는데..? 
 
-		InterlockedExchange(&pPlayer->_bSendFlag, TRUE);
-		InterlockedIncrement(&this->_Monitor_LoginWait);
-		return true;
+			CPacket *pSendPacket = CPacket::Alloc();
+			MakePacket_NewClientLogin(pSendPacket, pPlayer->_accountNo, pPlayer->_sessionKey, clientID);
+			//SYSLOG(L"LOG", LOG::LEVEL_ERROR, L"AccountNo : %05d, clientID : 0x%016x", iAccountNo, EXTRACTCLIENTID(clientID));
+			this->_lanserver_Login->SendPacket_ServerGroup(1, pSendPacket);
+			pSendPacket->Free();
+
+			InterlockedExchange(&pPlayer->_bSendFlag, TRUE);
+			InterlockedIncrement(&this->_Monitor_LoginWait);
+			return true;
+		}
 	}
 }
 

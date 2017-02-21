@@ -14,6 +14,8 @@
 #include <WinSock2.h>
 #include <map>
 #include <list>
+#include <stdarg.h>
+
 
 #include <my_global.h>
 #include <mysql.h>

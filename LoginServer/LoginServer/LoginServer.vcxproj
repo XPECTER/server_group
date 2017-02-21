@@ -161,6 +161,7 @@
     <ClInclude Include="..\..\mylibrary\StreamQueue.h" />
     <ClInclude Include="CommonProtocol.h" />
     <ClInclude Include="DBConnect.h" />
+    <ClInclude Include="DBConnectorTLS.h" />
     <ClInclude Include="DBTypeEnum.h" />
     <ClInclude Include="LanServer_Login.h" />
     <ClInclude Include="LoginServer.h" />
@@ -209,6 +210,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="DBConnect.cpp" />
+    <ClCompile Include="DBConnectorTLS.cpp" />
     <ClCompile Include="LanServer_Login.cpp" />
     <ClCompile Include="LoginServer.cpp" />
     <ClCompile Include="main.cpp" />
