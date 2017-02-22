@@ -19,7 +19,7 @@ class CLoginServer : public CNetServer
 		CLIENT_ID _clientID;
 
 		__int64 _accountNo;
-		char *_sessionKey;
+		char _sessionKey[64];
 		/*__int64 _timeoutTick;*/
 		unsigned __int64 _timeoutTick;
 

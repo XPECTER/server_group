@@ -84,6 +84,16 @@ int CDBConnectorTLS::GetLastError(void)
 	return pDB->GetLastError();
 }
 
+AccountDB::AccountDB()
+{
+
+}
+
+AccountDB::~AccountDB()
+{
+
+}
+
 bool AccountDB::ReadDB(en_DB_ACTION_TYPE type, void *pIn, void *pOut)
 {
 	MYSQL_ROW row;
@@ -177,7 +187,13 @@ bool AccountDB::ReadDB(en_DB_ACTION_TYPE type, void *pIn, void *pOut)
 			break;
 
 		case enDB_ACCOUNT_READ_RESET_STATUS_ALL:
-			this->Query("UPDATE `accountdb`.`status` SET status = 0;");
+		{
+			if (!this->Query("UPDATE `accountdb`.`status` SET status = 0;"))
+			{
+				SYSLOG(L"DATABASE", LOG::LEVEL_DEBUG, L" ##DATABASE Query : %s, ErrorNo : %d", this->_szLastQuery, this->GetLastError());
+				CCrashDump::Crash();
+			}
+		}
 			break;
 	}
 

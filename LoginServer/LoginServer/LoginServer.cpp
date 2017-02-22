@@ -144,7 +144,7 @@ bool CLoginServer::InsertPlayer(CLIENT_ID clientID)
 	st_PLAYER *pPlayer = this->_playerPool.Alloc();
 	pPlayer->_clientID = clientID;
 	pPlayer->_accountNo = -1;
-	pPlayer->_sessionKey = nullptr;
+	//pPlayer->_sessionKey = nullptr;
 	/*pPlayer->_timeoutTick = time(NULL);*/
 	pPlayer->_timeoutTick = GetTickCount64();
 	pPlayer->_bChatServerRecv = FALSE;
@@ -235,7 +235,8 @@ bool CLoginServer::PacketProc_ReqLogin(CLIENT_ID clientID, CPacket *pPacket)
 		{
 			pPlayer->_timeoutTick = GetTickCount64();
 			pPlayer->_accountNo = input.AccountNo;
-			pPlayer->_sessionKey = input.SessionKey; // 얘 지역이라 없어지는데..? 
+			//pPlayer->_sessionKey = input.SessionKey; // 얘 지역이라 없어지는데..? 
+			memcpy_s(pPlayer->_sessionKey, 64, input.SessionKey, 64);
 
 			CPacket *pSendPacket = CPacket::Alloc();
 			MakePacket_NewClientLogin(pSendPacket, pPlayer->_accountNo, pPlayer->_sessionKey, clientID);
@@ -366,7 +367,7 @@ void CLoginServer::MakePacket_ResLogin(CPacket *pSendPacket, __int64 iAccountNo,
 
 	BYTE szPacketContent[165] = { 0, };
 	memcpy_s(szPacketContent, 165, pSendPacket->GetBuffPtr(), 165);
-	SYSLOG(L"DEBUG", LOG::LEVEL_ERROR, L"%x", szPacketContent);
+	//SYSLOG(L"DEBUG", LOG::LEVEL_ERROR, L"%x", szPacketContent);
 
 	return;
 }

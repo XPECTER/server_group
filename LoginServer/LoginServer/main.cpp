@@ -27,13 +27,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	LoadConfigData();
 
 	//if (!g_AccountDB.Connect(g_ConfigData._szAccountIP, g_ConfigData._szAccountUser, g_ConfigData._szAccountPassword, g_ConfigData._szAccountDBName, g_ConfigData._iAccountPort))
-	if (!g_AccountDB.Connect())
-	{
-		SYSLOG(L"DATABASE", LOG::LEVEL_ERROR, L"DBConnect Failed");
-		return 0;
-	}
-	else
-		g_AccountDB.ReadDB(enDB_ACCOUNT_READ_RESET_STATUS_ALL, NULL, NULL);
+	g_AccountDB.ReadDB(enDB_ACCOUNT_READ_RESET_STATUS_ALL, NULL, NULL);
 	
 	loginServer.Start();
 
