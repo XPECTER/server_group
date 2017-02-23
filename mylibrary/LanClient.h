@@ -5,7 +5,6 @@
 #include <conio.h>
 #include <time.h>
 #include <locale.h>
-#include <Strsafe.h>
 #include <process.h>
 #include <WS2tcpip.h>
 #include <time.h>

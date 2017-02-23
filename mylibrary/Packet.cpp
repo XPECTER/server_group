@@ -5,6 +5,10 @@
 #include "MemoryPoolTLS.h"
 #include "Packet.h"
 
+BYTE CPacket::_packetCode = 0;
+BYTE CPacket::_packetKey_1 = 0;
+BYTE CPacket::_packetKey_2 = 0;
+
 CPacket::CPacket(void)
 {
 	Init();

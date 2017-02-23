@@ -1,5 +1,15 @@
 #pragma once
 
+#include <windows.h>
+#include <tchar.h>
+#include <strsafe.h>
+#include <locale.h>
+#include <process.h>
+#include <time.h>
+#include <psapi.h>
+#include <dbghelp.h>
+#include <crtdbg.h>
+#include <tlhelp32.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <crtdbg.h>
