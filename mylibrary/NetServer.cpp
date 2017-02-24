@@ -227,6 +227,7 @@ unsigned _stdcall CNetServer::AcceptThreadFunc(void *lpParam)
 		// 접속 거부된 IP이거나 Port이면 접속 불가처리
 		if (!pServer->OnConnectionRequest(szIP, iPort))
 		{
+			SYSLOG(L"SYSTEM", LOG::LEVEL_DEBUG, L"Access denied IP Adress. %s:%d", szIP, iPort);
 			closesocket(clientSock);
 			continue;
 		}
@@ -246,7 +247,7 @@ unsigned _stdcall CNetServer::AcceptThreadFunc(void *lpParam)
 		if (-1 == index)
 		{
 			// 배열이 다 차서 다른 무언가를 해줘야함.
-			pServer->OnError(GetLastError(), -1, L"Session Array is full");
+			SYSLOG(L"SYSTEM", LOG::LEVEL_DEBUG, L"User is up to maximum");
 
 			// 밑에 로직 추가
 			closesocket(clientSock);

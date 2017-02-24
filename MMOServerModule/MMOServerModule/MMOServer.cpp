@@ -74,6 +74,8 @@ bool CMMOServer::Start(wchar_t *szIP, int iPort, bool bNagleOpt, int iThreadNum,
 		return false;
 	}
 
+	Session_Init(iClientMax);
+	Thread_Init(iThreadNum);
 	return true;
 }
 
@@ -82,6 +84,9 @@ bool CMMOServer::Stop()
 	_bStop = true;
 	closesocket(_listenSock);
 
+	PostQueuedCompletionStatus(_hIOCP, 0, NULL, NULL);
+
+	//WaitForMultipleObjects()
 	return true;
 }
 
@@ -90,6 +95,59 @@ bool CMMOServer::Session_Init(int iClientMax)
 	// 비어있는 Session Index 세팅
 	for (int i = iClientMax - 1; i >= 0; i--)
 		_sessionIndexStack.Push(i);
+
+	return true;
+}
+
+bool CMMOServer::Thread_Init(int iThreadNum)
+{
+	_hAcceptThread = (HANDLE)_beginthreadex(NULL, 0, AcceptThreadFunc, this, NULL, NULL);
+	if (NULL == _hAcceptThread)
+	{
+		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Create AcceptTh failed");
+		return false;
+	}
+
+	_hAuthThread = (HANDLE)_beginthreadex(NULL, 0, AuthThreadFunc, this, NULL, NULL);
+	if (NULL == _hAuthThread)
+	{
+		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Create AuthTh failed");
+		return false;
+	}
+
+	_hWorkerThread = new HANDLE[iThreadNum];
+	for (int i = 0; i < iThreadNum; ++i)
+	{
+		_hWorkerThread[i] = (HANDLE)_beginthreadex(NULL, 0, WorkerThreadFunc, this, NULL, NULL);
+		if (NULL == _hWorkerThread[i])
+		{
+			SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Create WorkerTh failed");
+			return false;
+		}
+	}
+
+	_hSendThread = (HANDLE)_beginthreadex(NULL, 0, SendThreadFunc, this, NULL, NULL);
+	if (NULL == _hSendThread)
+	{
+		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Create SendTh failed");
+		return false;
+	}
+
+	_hGameThread = (HANDLE)_beginthreadex(NULL, 0, GameThreadFunc, this, NULL, NULL);
+	if (NULL == _hGameThread)
+	{
+		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Create GameTh failed");
+		return false;
+	}
+
+	_hMonitorThread = (HANDLE)_beginthreadex(NULL, 0, MonitorThreadFunc, this, NULL, NULL);
+	if (NULL == _hMonitorThread)
+	{
+		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Create MonitoringTh failed");
+		return false;
+	}
+
+	return true;
 }
 
 unsigned __stdcall CMMOServer::AcceptThreadFunc(void *lpParam)
@@ -155,6 +213,8 @@ bool CMMOServer::AuthThread_update(void)
 				CCrashDump::Crash();
 			}
 
+
+
 			/*if (NULL == CreateIoCompletionPort((HANDLE)pClientInfo->_clientSock, this->_hIOCP, (ULONG_PTR)pSession, 0))
 			{
 				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"CreateIoCompletionPort() Error. ErrorNo : %d", WSAGetLastError());
@@ -177,9 +237,24 @@ unsigned __stdcall CMMOServer::WorkerThreadFunc(void *lpParam)
 
 bool CMMOServer::WorkerThread_update(void)
 {
+	OVERLAPPED *overlap = new OVERLAPPED;
+	BOOL bGQCSResult;
+	DWORD dwTransferedBytes = 0;
+	CSESSION *pSession = NULL;
+
 	while (true)
 	{
-		break;
+		dwTransferedBytes = 0;
+		ZeroMemory(overlap, sizeof(OVERLAPPED));
+
+		bGQCSResult = GetQueuedCompletionStatus(this->_hIOCP, &dwTransferedBytes, (PULONG_PTR)pSession, &overlap, INFINITE);
+
+		// 
+		if (NULL == overlap && 0 == dwTransferedBytes && NULL == pSession)
+		{
+			PostQueuedCompletionStatus(_hIOCP, 0, NULL, NULL);
+			return true;
+		}
 	}
 
 	return true;

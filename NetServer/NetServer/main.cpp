@@ -8,11 +8,7 @@
 #include "main.h"
 
 CMemoryPoolTLS<CPacket> CPacket::PacketPool(300, true);
-BYTE CPacket::_packetCode = 0;
-BYTE CPacket::_packetKey_1 = 0;
-BYTE CPacket::_packetKey_2 = 0;
 
-long CCrashDump::_DumpCount = 0;
 CCrashDump crashDump;
 bool g_bPrintConfig = false;
 

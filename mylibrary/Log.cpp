@@ -98,20 +98,20 @@ void LOG::printLog(wchar_t *category, int logLevel, wchar_t *szLogString)//, ...
 
 	if (true == bFile)
 	{
-		EnterCriticalSection(&_cs);
+		EnterCriticalSection(&LOG::_cs);
 
-		FILE *pf;
+		FILE *pf = nullptr;
 		WCHAR filename[256] = { 0, };
 		
 		swprintf_s(filename, L"LOG\\%04d%02d_%s.txt", t.tm_year + 1900, t.tm_mon + 1, category);
-		if (0 == _wfopen_s(&pf, filename, L"a"))
+		if (0 == _wfopen_s(&pf, filename, L"a, ccs=UNICODE"))
 		{
 			fputws(buf, pf);
 			fputws(L"\n", pf);
 			fclose(pf);
 		}
 
-		LeaveCriticalSection(&_cs);
+		LeaveCriticalSection(&LOG::_cs);
 	}
 
 #ifdef MYSQL

@@ -14,12 +14,14 @@ public:
 	int GetLastError(void);
 
 public:
-	char _szLastQuery[1024];
+	wchar_t _szLastQuery[1024];
 
 private:
 	MYSQL _connection;
 	MYSQL *_pConnection;
 	MYSQL_RES *_pResult;
+
+	bool _bInit;
 };
 
 

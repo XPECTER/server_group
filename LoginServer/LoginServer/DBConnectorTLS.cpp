@@ -26,34 +26,41 @@ CDBConnector* CDBConnectorTLS::GetInstance(void)
 {
 	CDBConnector *pDB = (CDBConnector *)TlsGetValue(this->_iTlsIndex);
 
-	if (nullptr == pDB)
+	if (NULL == pDB)
 	{
+		SYSLOG(L"DATABASE", LOG::LEVEL_DEBUG, L"## New Connector by threadnum : %d", GetCurrentThreadId());
+
 		pDB = new CDBConnector;
 		this->_stack.Push(pDB);
 
 		if (!pDB->Connect(g_ConfigData._szAccountIP, g_ConfigData._szAccountUser, g_ConfigData._szAccountPassword, g_ConfigData._szAccountDBName, g_ConfigData._iAccountPort))
 		{
-			SYSLOG(L"DATABASE", LOG::LEVEL_DEBUG, L" ## DATABASE ErrorNo : %d", this->GetLastError());
+			SYSLOG(L"DATABASE", LOG::LEVEL_DEBUG, L"## DATABASE Connect Error. ErrorNo : %d", this->GetLastError());
+			return nullptr;
 		}
 
-		TlsSetValue(this->_iTlsIndex, pDB);
+		TlsSetValue(this->_iTlsIndex, (LPVOID)pDB);
 	}
 	
 	return pDB;
 }
 
-bool CDBConnectorTLS::Connect()
-{
-	CDBConnector *pDB = this->GetInstance();
-	if (nullptr == pDB)
-		return false;
-	else
-		return true;
-}
+//bool CDBConnectorTLS::Connect()
+//{
+//	CDBConnector *pDB = this->GetInstance();
+//
+//	if (nullptr == pDB)
+//		return false;
+//	else
+//		return true;
+//}
 
 bool CDBConnectorTLS::Query(char *szQuery, ...)
 {
 	CDBConnector *pDB = this->GetInstance();
+
+	if (nullptr == pDB)
+		return false;
 
 	char query[1024] = { 0, };
 	va_list vl;
@@ -84,9 +91,15 @@ int CDBConnectorTLS::GetLastError(void)
 	return pDB->GetLastError();
 }
 
+wchar_t* CDBConnectorTLS::GetLastQuery(void)
+{
+	CDBConnector *pDB = this->GetInstance();
+	return pDB->_szLastQuery;
+}
+
 AccountDB::AccountDB()
 {
-
+	
 }
 
 AccountDB::~AccountDB()
@@ -129,7 +142,7 @@ bool AccountDB::ReadDB(en_DB_ACTION_TYPE type, void *pIn, void *pOut)
 			}
 			else
 			{
-				SYSLOG(L"DATABASE", LOG::LEVEL_DEBUG, L" ##DATABASE Query : %s, ErrorNo : %d", this->_szLastQuery, this->GetLastError());
+				SYSLOG(L"DATABASE", LOG::LEVEL_DEBUG, L" ##DATABASE Query : %s, ErrorNo : %d", this->GetLastQuery(), this->GetLastError());
 				CCrashDump::Crash();
 			}
 
@@ -153,7 +166,7 @@ bool AccountDB::ReadDB(en_DB_ACTION_TYPE type, void *pIn, void *pOut)
 			}
 			else
 			{
-				SYSLOG(L"DATABASE", LOG::LEVEL_DEBUG, L" ##DATABASE Query : %s, ErrorNo : %d", this->_szLastQuery, this->GetLastError());
+				SYSLOG(L"DATABASE", LOG::LEVEL_DEBUG, L" ##DATABASE Query : %s, ErrorNo : %d", this->GetLastQuery(), this->GetLastError());
 				CCrashDump::Crash();
 			}
 
@@ -176,7 +189,7 @@ bool AccountDB::ReadDB(en_DB_ACTION_TYPE type, void *pIn, void *pOut)
 			}
 			else
 			{
-				SYSLOG(L"DATABASE", LOG::LEVEL_DEBUG, L" ##DATABASE Query : %s, ErrorNo : %d", this->_szLastQuery, this->GetLastError());
+				SYSLOG(L"DATABASE", LOG::LEVEL_DEBUG, L" ##DATABASE Query : %s, ErrorNo : %d", this->GetLastQuery(), this->GetLastError());
 				CCrashDump::Crash();
 			}
 
@@ -188,9 +201,15 @@ bool AccountDB::ReadDB(en_DB_ACTION_TYPE type, void *pIn, void *pOut)
 
 		case enDB_ACCOUNT_READ_RESET_STATUS_ALL:
 		{
+			/*if (!this->Query("SET SQL_SAFE_UPDATES = 0;"))
+			{
+				SYSLOG(L"DATABASE", LOG::LEVEL_DEBUG, L" ##DATABASE Query : %s, ErrorNo : %d", this->GetLastQuery(), this->GetLastError());
+				CCrashDump::Crash();
+			}*/
+
 			if (!this->Query("UPDATE `accountdb`.`status` SET status = 0;"))
 			{
-				SYSLOG(L"DATABASE", LOG::LEVEL_DEBUG, L" ##DATABASE Query : %s, ErrorNo : %d", this->_szLastQuery, this->GetLastError());
+				SYSLOG(L"DATABASE", LOG::LEVEL_DEBUG, L" ##DATABASE Query : %s, ErrorNo : %d", this->GetLastQuery(), this->GetLastError());
 				CCrashDump::Crash();
 			}
 		}

@@ -1,14 +1,43 @@
 #pragma once
 
+typedef __int64 CLIENT_ID;
+
+struct st_ACCEPT_CLIENT_INFO
+{
+	SOCKET _clientSock;
+	SOCKADDR_IN _clientAddr;
+};
+
+class CSESSION
+{
+protected:
+	virtual bool OnAuth_ClientJoin() = 0;
+	virtual bool OnAuth_PacketProc() = 0;
+	virtual bool OnAuth_ClientLeave(bool bToGame) = 0;
+
+	virtual bool OnGame_ClientJoin() = 0;
+	virtual bool OnGame_PacketProc() = 0;
+	virtual bool OnGame_ClientLeave() = 0;
+
+private:
+	CLIENT_ID _clientID;
+	st_ACCEPT_CLIENT_INFO *_connectInfo;
+
+	CStreamQueue	_recvQ;
+	CLockFreeQueue<CPacket *>	_sendQ;
+
+	OVERLAPPED		_recvOverlap;
+	OVERLAPPED		_sendOverlap;
+
+	__int64 _IOCount;
+	long	_iSending;
+	int		_iSendCount;
+
+
+};
+
 class CMMOServer
 {
-private: 
-	struct st_ACCEPT_CLIENT_INFO
-	{
-		SOCKET _clientSock;
-		SOCKADDR_IN _clientAddr;
-	};
-
 public:
 	enum en_SESSION_MODE
 	{
@@ -30,6 +59,7 @@ public:
 
 private:
 	bool Session_Init(int iClientMax);
+	bool Thread_Init(int iThreadNum);
 
 private:
 	bool _bStop;

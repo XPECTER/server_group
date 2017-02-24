@@ -4,9 +4,9 @@
 
 CDBConnector::CDBConnector()
 {
-	mysql_init(&this->_connection);
 	this->_pConnection = nullptr;
 	this->_pResult = nullptr;
+	this->_bInit = false;
 }
 
 CDBConnector::~CDBConnector()
@@ -27,12 +27,21 @@ bool CDBConnector::Connect(wchar_t *szConnectIP, wchar_t *szUser, wchar_t *szPas
 	wcstombs_s(&i, szConvertPassword, szPassword, 32);
 	wcstombs_s(&i, szConvertDBName, szDBName, 32);
 
-	this->_pConnection = mysql_real_connect(&this->_connection, szConvertIP, szConvertUser, szConvertPassword, szConvertDBName, iPort, (char*)NULL, 0);
-
+	mysql_init(&this->_connection);
 	if (NULL == this->_pConnection)
-		return false;
+	{
+		this->_pConnection = mysql_real_connect(&this->_connection, szConvertIP, szConvertUser, szConvertPassword, szConvertDBName, iPort, (char*)NULL, 0);
+		if (NULL == this->_pConnection)
+			return false;
+		else
+			return true;
+	}
 	else
-		return true;
+	{
+		SYSLOG(L"DATABASE", LOG::LEVEL_DEBUG, L"duplicate call connect");
+		CCrashDump::Crash();
+		return false;
+	}
 }
 
 bool CDBConnector::Query(char *szQuery, ...)
@@ -44,7 +53,8 @@ bool CDBConnector::Query(char *szQuery, ...)
 	vsprintf_s(query, 1024, szQuery, vl);
 	va_end(vl);
 
-	//sprintf_s(this->_szLastQuery, 1024, query);
+	mbstowcs_s(NULL, this->_szLastQuery, 1024, query, 1024);
+	
 	if (0 == mysql_query(&this->_connection, query))
 	{
 		this->_pResult = mysql_store_result(&this->_connection);
@@ -67,6 +77,6 @@ void CDBConnector::FreeResult(void)
 
 int CDBConnector::GetLastError(void)
 {
-	return mysql_errno(this->_pConnection);
+	return mysql_errno(&this->_connection);
 }
 

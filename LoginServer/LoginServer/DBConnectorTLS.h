@@ -6,12 +6,13 @@ public:
 	CDBConnectorTLS();
 	virtual ~CDBConnectorTLS();
 
-	bool Connect();
+	//bool Connect();
 
 	bool Query(char *szQuery, ...);
 	MYSQL_ROW FetchRow(void);
 	void FreeResult(void);
 	int GetLastError(void);
+	wchar_t *GetLastQuery(void);
 
 private:
 	CDBConnector *GetInstance();
