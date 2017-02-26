@@ -66,6 +66,15 @@
     <ClInclude Include="MMOServer.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="GameServer.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="LanClient_Game.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="MMOSession.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -111,6 +120,15 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="MMOServer.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="GameServer.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="LanClient_Game.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="MMOSession.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

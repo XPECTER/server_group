@@ -1,16 +1,20 @@
 #include "stdafx.h"
+#include "MMOSession.h"
 #include "MMOServer.h"
 
 CMMOServer::CMMOServer()
 {
 	_bStop = false;
 
+	_iClientMax = 0;
+	_iClientID = 0;
+
 	_listenSock = INVALID_SOCKET;
 	_hIOCP = INVALID_HANDLE_VALUE;
 
 	_hAcceptThread = INVALID_HANDLE_VALUE;
 	_hAuthThread = INVALID_HANDLE_VALUE;
-	_hWorkerThread = nullptr;
+	_hWorkerThread = NULL;
 	_hSendThread = INVALID_HANDLE_VALUE;
 	_hGameThread = INVALID_HANDLE_VALUE;
 	_hMonitorThread = INVALID_HANDLE_VALUE;
@@ -18,11 +22,23 @@ CMMOServer::CMMOServer()
 
 CMMOServer::~CMMOServer()
 {
-
+	delete[] this->_pSessionArray;
 }
 
 bool CMMOServer::Start(wchar_t *szIP, int iPort, bool bNagleOpt, int iThreadNum, int iClientMax)
 {
+#pragma region print_serverinfo
+	SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L" ##\t    ServerBindIP : %s", szIP);
+	SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L" ##\t  ServerBindPort : %d", iPort);
+	SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L" ##\t        NagleOpt : %s", bNagleOpt == true? L"TRUE" : L"FALSE");
+	SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L" ##\t   Thread Amount : %d", iThreadNum);
+	SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L" ##\t       ClientMax : %d", iClientMax);
+	SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L" ##\t      PacketCode : 0x%X", g_Config.iPacketCode);
+	SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L" ##\t     PacketKey_1 : 0x%X", g_Config.iPacketKey1);
+	SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L" ##\t     PacketKey_2 : 0x%X", g_Config.iPacketKey2);
+	SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L" ##\t       LOG_LEVEL : %s", g_Config.iLogLevel == 0? L"LEVEL_DEBUG" : g_Config.iLogLevel == 1? L"LEVEL_WARNG" : L"LEVEL_ERROR");
+#pragma endregion print_serverinfo
+
 	WSADATA wsa;
 	if (0 != WSAStartup(MAKEWORD(2, 2), &wsa))
 	{
@@ -86,12 +102,16 @@ bool CMMOServer::Stop()
 
 	PostQueuedCompletionStatus(_hIOCP, 0, NULL, NULL);
 
+	// 스레드 정리
 	//WaitForMultipleObjects()
 	return true;
 }
 
 bool CMMOServer::Session_Init(int iClientMax)
 {
+	_iClientMax = iClientMax;
+	_pSessionArray = new CSESSION*[iClientMax];
+
 	// 비어있는 Session Index 세팅
 	for (int i = iClientMax - 1; i >= 0; i--)
 		_sessionIndexStack.Push(i);
@@ -150,6 +170,117 @@ bool CMMOServer::Thread_Init(int iThreadNum)
 	return true;
 }
 
+void CMMOServer::SendPost(CSESSION *pSession)
+{
+	if (InterlockedCompareExchange((long *)&pSession->_iSending, TRUE, FALSE))
+		return;
+
+	if (CSESSION::MODE_AUTH != pSession->_iSessionMode &&
+		CSESSION::MODE_GAME != pSession->_iSessionMode)
+	{
+		InterlockedExchange((long *)&pSession->_iSending, FALSE);
+		return;
+	}
+
+	if (0 >= pSession->_sendQ.GetUseSize())
+	{
+		InterlockedExchange((long *)&pSession->_iSending, FALSE);
+		return;
+	}
+
+	InterlockedIncrement(&pSession->_IOCount);
+
+	WSABUF wsabuf[200];
+	int iPacketCount = min(200, pSession->_sendQ.GetUseSize());
+	CPacket *pPacket = NULL;
+
+	for (int i = 0; i < iPacketCount; ++i)
+	{
+		if (pSession->_sendQ.Peek(&pPacket, i))
+		{
+			wsabuf[i].buf = (*pPacket).GetBuffPtr();
+			wsabuf[i].len = (*pPacket).GetUseSize();
+		}
+		else
+		{
+			SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"SendQ Peek Error");
+			CCrashDump::Crash();
+		}
+	}
+
+	DWORD lpFlag = 0;
+	ZeroMemory(&pSession->_sendOverlap, sizeof(OVERLAPPED));
+	pSession->_iSendCount = iPacketCount;
+
+	if (SOCKET_ERROR == WSASend(pSession->_connectInfo->_clientSock, wsabuf, iPacketCount, NULL, lpFlag, &pSession->_sendOverlap, NULL))
+	{
+		int iError = WSAGetLastError();
+		if (WSA_IO_PENDING != iError)
+		{
+			if (WSAENOBUFS == iError)
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_WARNING, L"WSAENOBUFS. Check nonpagedpool");
+				CCrashDump::Crash();
+			}
+
+			pSession->Disconnect();
+
+			if (0 == InterlockedDecrement(&pSession->_IOCount))
+			{
+				pSession->_bLogout = true;
+			}
+		}
+	}
+
+	return;
+}
+
+void CMMOServer::RecvPost(CSESSION *pSession, bool incrementFlag)
+{
+	WSABUF wsabuf[2];
+	int wsabufCount;
+
+	if (TRUE == incrementFlag)
+		InterlockedIncrement(&pSession->_IOCount);
+
+	wsabuf[0].len = pSession->_recvQ.GetNotBrokenPutsize();
+	wsabuf[0].buf = pSession->_recvQ.GetWriteBufferPtr();
+	wsabufCount = 1;
+
+	int isBrokenLen = pSession->_recvQ.GetFreeSize() - pSession->_recvQ.GetNotBrokenPutsize();
+	if (0 < isBrokenLen)
+	{
+		wsabuf[1].len = isBrokenLen;
+		wsabuf[1].buf = pSession->_recvQ.GetBufferPtr();
+		wsabufCount = 2;
+	}
+
+	DWORD lpFlag = 0;
+
+	ZeroMemory(&pSession->_recvOverlap, sizeof(OVERLAPPED));
+	if (SOCKET_ERROR == WSARecv(pSession->_connectInfo->_clientSock, wsabuf, wsabufCount, NULL, &lpFlag, &pSession->_recvOverlap, NULL))
+	{
+		int iError = WSAGetLastError();
+		if (WSA_IO_PENDING != iError)
+		{
+			if (WSAENOBUFS == iError)
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_WARNING, L"WSAENOBUFS. Check nonpagedpool");
+				CCrashDump::Crash();
+			}
+
+			pSession->Disconnect();
+
+			if (0 == InterlockedDecrement(&pSession->_IOCount))
+			{
+				pSession->_bLogout = true;
+			}
+		}
+	}
+
+	return;
+}
+
 unsigned __stdcall CMMOServer::AcceptThreadFunc(void *lpParam)
 {
 	CMMOServer *pServer = (CMMOServer *)lpParam;
@@ -159,7 +290,7 @@ unsigned __stdcall CMMOServer::AcceptThreadFunc(void *lpParam)
 bool CMMOServer::AcceptThread_update(void)
 {
 	int addrLen;
-	st_ACCEPT_CLIENT_INFO *pClientInfo = nullptr;
+	st_ACCEPT_CLIENT_INFO *pClientInfo = NULL;
 
 	if (SOCKET_ERROR == listen(_listenSock, SOMAXCONN))
 	{
@@ -171,21 +302,26 @@ bool CMMOServer::AcceptThread_update(void)
 	{
 		pClientInfo = _clientInfoPool.Alloc();
 		pClientInfo->_clientSock = accept(_listenSock, (SOCKADDR *)&pClientInfo->_clientAddr, &addrLen);
+		_iAcceptTotal++;
 
 		if (INVALID_SOCKET == pClientInfo->_clientSock)
 		{
+			_clientInfoPool.Free(pClientInfo);
+
 			// 진짜 접속 못 받은 것과 Stop()을 호출해서 종료하는 것을 구분
 			if (true == _bStop)
+			{
 				break;
+			}
 			else
 			{
 				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"accept() Error. ErrorNo : %d", WSAGetLastError());
-				_clientInfoPool.Free(pClientInfo);
 				continue;
 			}
 		}
 
 		_clientInfoQueue.Enqueue(pClientInfo);
+		InterlockedIncrement(&_iAcceptCounter);
 	}
 
 	return true;
@@ -194,37 +330,75 @@ bool CMMOServer::AcceptThread_update(void)
 unsigned __stdcall CMMOServer::AuthThreadFunc(void *lpParam)
 {
 	CMMOServer *pServer = (CMMOServer *)lpParam;
-	return pServer->AuthThread_update();
+
+	while (!pServer->_bStop)
+	{
+		pServer->AuthThread_update();
+		Sleep(dfTHREAD_UPDATE_TIME_AUTH);
+	}
+
+	return 0;
 }
 
 bool CMMOServer::AuthThread_update(void)
 {
-	st_ACCEPT_CLIENT_INFO *pClientInfo = nullptr;
+	st_ACCEPT_CLIENT_INFO *pClientConnectInfo = NULL;
+	CSESSION *pSession = NULL;
+	int iBlankIndex = 0;
 
-	while (true)
+	while (_clientInfoQueue.GetUseSize())
 	{
-		if (0 < _clientInfoQueue.GetUseSize())
+		_clientInfoQueue.Dequeue(&pClientConnectInfo);
+
+		if (NULL == pClientConnectInfo)
 		{
-			_clientInfoQueue.Dequeue(&pClientInfo);
-
-			if (nullptr == pClientInfo)
-			{
-				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"ClientInfo is null in AuthThread");
-				CCrashDump::Crash();
-			}
-
-
-
-			/*if (NULL == CreateIoCompletionPort((HANDLE)pClientInfo->_clientSock, this->_hIOCP, (ULONG_PTR)pSession, 0))
-			{
-				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"CreateIoCompletionPort() Error. ErrorNo : %d", WSAGetLastError());
-				closesocket(pSession->ClientSock);
-			}*/
-			
+			SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"ClientInfo is null in AuthThread");
+			CCrashDump::Crash();
 		}
 
-		Sleep(2);			// 2 ~ 10ms 사이
+		/*if (NULL == CreateIoCompletionPort((HANDLE)pClientInfo->_clientSock, this->_hIOCP, (ULONG_PTR)pSession, 0))
+		{
+		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"CreateIoCompletionPort() Error. ErrorNo : %d", WSAGetLastError());
+		closesocket(pSession->ClientSock);
+		}*/
+
+		this->_sessionIndexStack.Pop(&iBlankIndex);
+
+		if (0 == iBlankIndex)
+		{
+			SYSLOG(L"SYSTEM", LOG::LEVEL_DEBUG, L"Session index is FULL");
+			this->_clientInfoPool.Free(pClientConnectInfo);
+			continue;
+		}
+
+		pSession = this->_pSessionArray[iBlankIndex];
+
+		pSession->_iSessionMode = CSESSION::MODE_AUTH;
+		pSession->_clientID = MAKECLIENTID(iBlankIndex, _iClientID);
+		pSession->_connectInfo = pClientConnectInfo;
+		pSession->_iSendCount = 0;
+
+		InterlockedIncrement(&pSession->_IOCount);
+		pSession->OnAuth_ClientJoin();
+		RecvPost(pSession, false);
+
+		_iClientID++;
 	}
+
+	for (int i = 0; i < _iClientMax; ++i)
+	{
+		if (NULL != (this->_pSessionArray[i]))
+		{
+			pSession = (this->_pSessionArray[i]);
+
+			if (CSESSION::MODE_AUTH == pSession->_iSessionMode)
+				pSession->OnAuth_PacketProc();
+		}
+		else
+			continue;
+	}
+
+	OnAuth_Update();
 
 	return true;
 }
@@ -241,6 +415,7 @@ bool CMMOServer::WorkerThread_update(void)
 	BOOL bGQCSResult;
 	DWORD dwTransferedBytes = 0;
 	CSESSION *pSession = NULL;
+	long IOCount = 0;
 
 	while (true)
 	{
@@ -249,28 +424,74 @@ bool CMMOServer::WorkerThread_update(void)
 
 		bGQCSResult = GetQueuedCompletionStatus(this->_hIOCP, &dwTransferedBytes, (PULONG_PTR)pSession, &overlap, INFINITE);
 
-		// 
+		// 종료 메시지
 		if (NULL == overlap && 0 == dwTransferedBytes && NULL == pSession)
 		{
 			PostQueuedCompletionStatus(_hIOCP, 0, NULL, NULL);
-			return true;
+			return 0;
+		}
+
+		// 하트비트
+		/*if (NULL == overlap & 1 == dwTransferedBytes && (CSESSION *)1 == pSession)
+		{
+			continue;
+		}*/
+
+		if (NULL != overlap)
+		{
+			if (0 == dwTransferedBytes)
+			{
+				pSession->Disconnect();
+			}
+			else if (overlap == &pSession->_recvOverlap)
+			{
+				pSession->CompleteRecv(dwTransferedBytes);
+				RecvPost(pSession, true);
+			}
+			else if (overlap == &pSession->_sendOverlap)
+			{
+				pSession->CompleteSend();
+			}
+		}
+
+		IOCount = InterlockedDecrement(&pSession->_IOCount);
+		if (0 == IOCount)
+		{
+			pSession->_bLogout = true;
+		}
+		else if (0 > IOCount)
+		{
+			SYSLOG(L"SYSTEM", LOG::LEVEL_DEBUG, L"IOCount Sync Error");
 		}
 	}
-
-	return true;
 }
 
 unsigned __stdcall CMMOServer::SendThreadFunc(void *lpParam)
 {
 	CMMOServer *pServer = (CMMOServer *)lpParam;
-	return pServer->SendThread_update();
+
+	while (!pServer->_bStop)
+	{
+		pServer->SendThread_update();
+		Sleep(dfTHREAD_UPDATE_TIME_SEND);
+	}
+
+	return 0;
 }
 
 bool CMMOServer::SendThread_update(void)
 {
-	while (true)
+	CSESSION *pSession = NULL;
+
+	for (int i = 0; i < _iClientMax; ++i)
 	{
-		Sleep(1);
+		if (NULL != (this->_pSessionArray[i]))
+		{
+			pSession = (this->_pSessionArray[i]);
+			this->SendPost(pSession);
+		}
+		else
+			continue;
 	}
 
 	return true;
@@ -279,14 +500,31 @@ bool CMMOServer::SendThread_update(void)
 unsigned __stdcall CMMOServer::GameThreadFunc(void *lpParam)
 {
 	CMMOServer *pServer = (CMMOServer *)lpParam;
-	return pServer->GameThread_update();
+
+	while (!pServer->_bStop)
+	{
+		pServer->GameThread_update();
+		Sleep(dfTHREAD_UPDATE_TIME_GAME);
+	}
+
+	return 0;
 }
 
 bool CMMOServer::GameThread_update(void)
 {
-	while (true)
+	CSESSION *pSession = NULL;
+
+	for (int i = 0; i < _iClientMax; ++i)
 	{
-		break;
+		if (NULL != (this->_pSessionArray[i]))
+		{
+			pSession = (this->_pSessionArray[i]);
+
+			if (CSESSION::MODE_AUTH_TO_GAME == pSession->_iSessionMode)
+				pSession->OnGame_ClientJoin();
+		}
+		else
+			continue;
 	}
 
 	return true;
@@ -295,21 +533,25 @@ bool CMMOServer::GameThread_update(void)
 unsigned __stdcall CMMOServer::MonitorThreadFunc(void *lpParam)
 {
 	CMMOServer *pServer = (CMMOServer *)lpParam;
-	return pServer->MonitorThread_update();
+
+	while (!pServer->_bStop)
+	{
+		pServer->MonitorThread_update();
+		Sleep(dfTHREAD_UPDATE_TIME_MONITOR);
+	}
+
+	return 0;
 }
 
 bool CMMOServer::MonitorThread_update(void)
 {
-	while (true)
-	{
-		_iSendPacketTPS = _iSendPacketCounter;
-		_iRecvPacketTPS = _iRecvPacketCounter;
+	_iAcceptTPS = _iAcceptCounter;
+	_iSendPacketTPS = _iSendPacketCounter;
+	_iRecvPacketTPS = _iRecvPacketCounter;
 
-		_iSendPacketCounter = 0;
-		_iRecvPacketCounter = 0;
-
-		Sleep(999);
-	}
-
+	_iAcceptCounter = 0;
+	_iSendPacketCounter = 0;
+	_iRecvPacketCounter = 0;
+	
 	return true;
 }
