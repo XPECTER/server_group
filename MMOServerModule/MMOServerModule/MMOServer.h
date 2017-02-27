@@ -12,18 +12,20 @@ public:
 	};
 
 public:
-	CMMOServer();
+	CMMOServer(int iClientMax);
 	virtual ~CMMOServer();
 
-	bool Start(wchar_t *szIP, int iPort, bool bNagleOpt, int iThreadNum, int iClientMax);
+	bool Start(wchar_t *szIP, int iPort, bool bNagleOpt, int iThreadNum);
 	bool Stop();
+
+	bool SetSessionArray(int index, CSESSION *pSession);
 
 protected:
 	virtual void OnAuth_Update(void) = 0;
 	virtual void OnGame_Update(void) = 0;
 
 private:
-	bool Session_Init(int iClientMax);
+	bool Session_Init(void);
 	bool Thread_Init(int iThreadNum);
 
 	void SendPost(CSESSION *pSession);

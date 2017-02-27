@@ -127,3 +127,9 @@ void LOG::printLog(wchar_t *category, int logLevel, wchar_t *szLogString)//, ...
 	
 	return;
 }
+
+bool LOG::CreateFolder(wchar_t *szFolderName)
+{
+	CreateDirectory(szFolderName, NULL);
+	return true;
+}

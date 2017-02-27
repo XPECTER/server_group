@@ -2,11 +2,11 @@
 #include "MMOSession.h"
 #include "MMOServer.h"
 
-CMMOServer::CMMOServer()
+CMMOServer::CMMOServer(int iClientMax)
 {
 	_bStop = false;
 
-	_iClientMax = 0;
+	_iClientMax = iClientMax;
 	_iClientID = 0;
 
 	_listenSock = INVALID_SOCKET;
@@ -25,14 +25,15 @@ CMMOServer::~CMMOServer()
 	delete[] this->_pSessionArray;
 }
 
-bool CMMOServer::Start(wchar_t *szIP, int iPort, bool bNagleOpt, int iThreadNum, int iClientMax)
+bool CMMOServer::Start(wchar_t *szIP, int iPort, bool bNagleOpt, int iThreadNum)
 {
 #pragma region print_serverinfo
+	SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L" ############## GAME SERVER START ##############");
 	SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L" ##\t    ServerBindIP : %s", szIP);
 	SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L" ##\t  ServerBindPort : %d", iPort);
 	SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L" ##\t        NagleOpt : %s", bNagleOpt == true? L"TRUE" : L"FALSE");
 	SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L" ##\t   Thread Amount : %d", iThreadNum);
-	SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L" ##\t       ClientMax : %d", iClientMax);
+	SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L" ##\t       ClientMax : %d", _iClientMax);
 	SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L" ##\t      PacketCode : 0x%X", g_Config.iPacketCode);
 	SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L" ##\t     PacketKey_1 : 0x%X", g_Config.iPacketKey1);
 	SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L" ##\t     PacketKey_2 : 0x%X", g_Config.iPacketKey2);
@@ -90,7 +91,7 @@ bool CMMOServer::Start(wchar_t *szIP, int iPort, bool bNagleOpt, int iThreadNum,
 		return false;
 	}
 
-	Session_Init(iClientMax);
+	Session_Init();
 	Thread_Init(iThreadNum);
 	return true;
 }
@@ -103,17 +104,20 @@ bool CMMOServer::Stop()
 	PostQueuedCompletionStatus(_hIOCP, 0, NULL, NULL);
 
 	// 스레드 정리
+	//HANDLE 배열 세팅 
 	//WaitForMultipleObjects()
+
+	SYSLOG(L"", LOG::LEVEL_ERROR, L"############ GAME SERVER STOP ############");
 	return true;
 }
 
-bool CMMOServer::Session_Init(int iClientMax)
+bool CMMOServer::Session_Init(void)
 {
-	_iClientMax = iClientMax;
-	_pSessionArray = new CSESSION*[iClientMax];
+	_pSessionArray = new CSESSION*[_iClientMax];
+	memset(_pSessionArray, NULL, sizeof(CSESSION*) * _iClientMax);
 
 	// 비어있는 Session Index 세팅
-	for (int i = iClientMax - 1; i >= 0; i--)
+	for (int i = _iClientMax - 1; i >= 0; i--)
 		_sessionIndexStack.Push(i);
 
 	return true;
@@ -289,7 +293,7 @@ unsigned __stdcall CMMOServer::AcceptThreadFunc(void *lpParam)
 
 bool CMMOServer::AcceptThread_update(void)
 {
-	int addrLen;
+	int addrLen = sizeof(SOCKADDR);
 	st_ACCEPT_CLIENT_INFO *pClientInfo = NULL;
 
 	if (SOCKET_ERROR == listen(_listenSock, SOMAXCONN))
@@ -301,7 +305,7 @@ bool CMMOServer::AcceptThread_update(void)
 	while (true)
 	{
 		pClientInfo = _clientInfoPool.Alloc();
-		pClientInfo->_clientSock = accept(_listenSock, (SOCKADDR *)&pClientInfo->_clientAddr, &addrLen);
+ 		pClientInfo->_clientSock = accept(_listenSock, (SOCKADDR *)&pClientInfo->_clientAddr, &addrLen);
 		_iAcceptTotal++;
 
 		if (INVALID_SOCKET == pClientInfo->_clientSock)
@@ -346,7 +350,7 @@ bool CMMOServer::AuthThread_update(void)
 	CSESSION *pSession = NULL;
 	int iBlankIndex = 0;
 
-	while (_clientInfoQueue.GetUseSize())
+	while (0 < _clientInfoQueue.GetUseSize())
 	{
 		_clientInfoQueue.Dequeue(&pClientConnectInfo);
 
@@ -554,4 +558,14 @@ bool CMMOServer::MonitorThread_update(void)
 	_iRecvPacketCounter = 0;
 	
 	return true;
+}
+
+int CMMOServer::GetSessionCount(void)
+{
+	return 0;
+}
+
+int CMMOServer::GetPlayerCount(void)
+{
+	return 0;
 }

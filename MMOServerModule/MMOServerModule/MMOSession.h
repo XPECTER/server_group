@@ -35,6 +35,7 @@ public:
 	void CompleteRecv(int recvBytes);
 	void CompleteSend(void);
 
+
 protected:
 	virtual bool OnAuth_ClientJoin(void) = 0;
 	virtual bool OnAuth_PacketProc(void) = 0;

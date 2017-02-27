@@ -25,7 +25,7 @@ do{															\
 		}													\
 } while (0)										
 
-#define SYSLOG_SETDIRECTORY(FolderName) CreateFolder(FolderName)
+#define SYSLOG_SETDIRECTORY(FolderName) LOG::CreateFolder(FolderName)
 #else
 #define SYSLOG(Category, LogLevel, fmt, ...)
 #endif
@@ -47,7 +47,7 @@ public:
 public :
 	//static LOG* GetInstance(void);
 	static void printLog(WCHAR *category, int logLevel, wchar_t *szLogString);//, ...);
-
+	static bool CreateFolder(wchar_t *szFolderName);
 private:
 	//static LOG* _instance;
 
