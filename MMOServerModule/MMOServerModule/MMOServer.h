@@ -1,14 +1,90 @@
 #pragma once
 
+typedef __int64 CLIENT_ID;
+
+#define MAKECLIENTID(index, id) (((__int64)index << 48) | id)
+#define EXTRACTCLIENTINDEX(ClientID) ((__int64)ClientID >> 48)
+#define EXTRACTCLIENTID(ClientID) ((__int64)ClientID & 0x00FFFFFF)
+
+#define INVALID_SESSION_INDEX -1
 class CMMOServer
 {
 public:
 	enum define
 	{
-		dfTHREAD_UPDATE_TIME_AUTH = 5,
+		dfTHREAD_UPDATE_TIME_AUTH = 3,
 		dfTHREAD_UPDATE_TIME_GAME = 10,
 		dfTHREAD_UPDATE_TIME_SEND = 1,
 		dfTHREAD_UPDATE_TIME_MONITOR = 998,
+	};
+
+protected:
+	struct st_ACCEPT_CLIENT_INFO
+	{
+		SOCKET _clientSock;
+		SOCKADDR_IN _clientAddr;
+	};
+
+	class CSession
+	{
+	public:
+		enum en_SESSION_MODE
+		{
+			MODE_NONE = 0,						// 미 접속 상태
+			MODE_AUTH,							// Accept 후 세션 등록
+			MODE_AUTH_TO_GAME,					// 인증 처리 후 로그인 완료
+			MODE_GAME,							// 인증 모드에서 게임 모드로 전환
+			MODE_LOGOUT_IN_AUTH,				// AuthThread에서 close
+			MODE_LOGOUT_IN_GAME,				// GameThread에서 close
+			MODE_WAIT_LOGOUT,					// 세션 릴리즈
+		};
+	public:
+		bool SendPacket(CPacket *pSendPacket);
+		bool Disconnect(void);
+		void SetMode_Game(void);
+
+		void CompleteRecv(int recvBytes);
+		void CompleteSend(void);
+
+
+	protected:
+		virtual bool OnAuth_ClientJoin(void) = 0;
+		virtual bool OnAuth_PacketProc(void) = 0;
+		virtual bool OnAuth_ClientLeave(bool bToGame) = 0;
+
+		virtual bool OnGame_ClientJoin(void) = 0;
+		virtual bool OnGame_PacketProc(void) = 0;
+		virtual bool OnGame_ClientLeave(void) = 0;
+		virtual bool OnGame_ClientRelease(void) = 0;
+
+	private:
+		void SendPost(void);
+		void RecvPost(bool incrementFlag);
+
+	protected:
+		int		_iSessionMode;
+		bool	_bAuthToGame;
+		bool	_bLogout;
+
+	public:
+		CLockFreeQueue<CPacket *>	_completeRecvQ;
+
+	private:
+		CLIENT_ID _clientID;
+		st_ACCEPT_CLIENT_INFO *_connectInfo;
+
+		CStreamQueue	_recvQ;
+		CLockFreeQueue<CPacket *>	_sendQ;
+		
+
+		OVERLAPPED		_recvOverlap;
+		OVERLAPPED		_sendOverlap;
+
+		long	_IOCount;
+		long	_iSending;
+		int		_iSendCount;
+
+		friend class CMMOServer;
 	};
 
 public:
@@ -18,9 +94,11 @@ public:
 	bool Start(wchar_t *szIP, int iPort, bool bNagleOpt, int iThreadNum);
 	bool Stop();
 
-	bool SetSessionArray(int index, CSESSION *pSession);
+	
 
 protected:
+	virtual bool SetSessionArray(int index, void *pSession);
+
 	virtual void OnAuth_Update(void) = 0;
 	virtual void OnGame_Update(void) = 0;
 
@@ -28,8 +106,7 @@ private:
 	bool Session_Init(void);
 	bool Thread_Init(int iThreadNum);
 
-	void SendPost(CSESSION *pSession);
-	void RecvPost(CSESSION *pSession, bool incrementFlag);
+	
 
 public:
 	bool _bStop;
@@ -46,7 +123,7 @@ private:
 	CMemoryPool<st_ACCEPT_CLIENT_INFO> _clientInfoPool;
 	CLockFreeQueue<st_ACCEPT_CLIENT_INFO *> _clientInfoQueue;
 
-	CSESSION **_pSessionArray;
+	CSession **_pSessionArray;
 
 	//////////////////////////////////////////////////////
 	// 모니터링 함수

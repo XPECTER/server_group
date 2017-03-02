@@ -2,7 +2,6 @@
 //
 
 #include "stdafx.h"
-#include "MMOSession.h"
 #include "MMOServer.h"
 #include "LanClient_Game.h"
 #include "GameServer.h"
@@ -30,7 +29,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	CGameServer GameServer(g_Config.iClientMax);
 	g_pGameServer = &GameServer;
-	g_pGameServer->Start();
+	g_pGameServer->Start(g_Config.szNetBindIP, g_Config.iNetBindPort, g_Config.bNetNagleOpt, g_Config.iNetThreadNum);
 
 	while (true)
 	{
@@ -236,7 +235,7 @@ void KeyProcess(void)
 			case 'S':
 			case 's':
 			{
-				g_pGameServer->Start();
+				g_pGameServer->Start(g_Config.szNetBindIP, g_Config.iNetBindPort, g_Config.bNetNagleOpt, g_Config.iNetThreadNum);
 				break;
 			}
 
