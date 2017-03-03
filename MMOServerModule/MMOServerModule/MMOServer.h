@@ -43,7 +43,7 @@ protected:
 		bool Disconnect(void);
 		void SetMode_Game(void);
 
-		void CompleteRecv(int recvBytes);
+		long CompleteRecv(int recvBytes);
 		void CompleteSend(void);
 
 
@@ -61,21 +61,17 @@ protected:
 		void SendPost(void);
 		void RecvPost(bool incrementFlag);
 
-	protected:
-		int		_iSessionMode;
-		bool	_bAuthToGame;
-		bool	_bLogout;
-
 	public:
-		CLockFreeQueue<CPacket *>	_completeRecvQ;
-
-	private:
 		CLIENT_ID _clientID;
 		st_ACCEPT_CLIENT_INFO *_connectInfo;
 
 		CStreamQueue	_recvQ;
 		CLockFreeQueue<CPacket *>	_sendQ;
-		
+		CLockFreeQueue<CPacket *>	_completeRecvQ;
+
+		int		_iSessionMode;
+		bool	_bAuthToGame;
+		bool	_bLogout;
 
 		OVERLAPPED		_recvOverlap;
 		OVERLAPPED		_sendOverlap;
@@ -139,10 +135,21 @@ public:
 	long _iSendPacketTPS;
 	long _iRecvPacketTPS;
 
+	long _iTotalSessionCounter;
+
+	long _iAuthThLoopTPS;
+	long _iAuthThSessionCounter;
+
+	long _iGameThLoopTPS;
+	long _iGameThSessionCounter;
+	
 private:
 	long _iAcceptCounter;
 	long _iSendPacketCounter;
 	long _iRecvPacketCounter;
+	
+	long _iAuthThLoopCounter;
+	long _iGameThLoopCounter;
 
 	//////////////////////////////////////////////////////
 	// Thread ฐüทร

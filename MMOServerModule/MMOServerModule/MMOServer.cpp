@@ -128,6 +128,8 @@ bool CMMOServer::SetSessionArray(int index, void *pSession)
 	return true;
 }
 
+
+
 bool CMMOServer::Thread_Init(int iThreadNum)
 {
 	_hAcceptThread = (HANDLE)_beginthreadex(NULL, 0, AcceptThreadFunc, this, NULL, NULL);
@@ -277,9 +279,9 @@ bool CMMOServer::AuthThread_update(void)
 		pSession->_connectInfo = pClientConnectInfo;
 		pSession->_iSendCount = 0;
 
-		if (NULL == CreateIoCompletionPort((HANDLE)pClientConnectInfo->_clientSock, this->_hIOCP, (ULONG_PTR)pSession, 10))
+		if (this->_hIOCP != CreateIoCompletionPort((HANDLE)pClientConnectInfo->_clientSock, this->_hIOCP, (ULONG_PTR)pSession, 0))
 		{
-			SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"CreateIoCompletionPort() Error. ErrorNo : %d", WSAGetLastError());
+			SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"CreateIoCompletionPort() Error. ErrorNo : %d", GetLastError());
 			closesocket(pClientConnectInfo->_clientSock);
 			CCrashDump::Crash();
 		}
@@ -289,6 +291,8 @@ bool CMMOServer::AuthThread_update(void)
 		pSession->RecvPost(false);
 
 		_iClientID++;
+		_iAuthThSessionCounter++;
+		InterlockedIncrement(&this->_iTotalSessionCounter);
 	}
 
 	for (int i = 0; i < _iClientMax; ++i)
@@ -312,7 +316,7 @@ bool CMMOServer::AuthThread_update(void)
 		{
 			pSession = (this->_pSessionArray[i]);
 
-			if (true == pSession->_bLogout)
+			if (CSession::MODE_AUTH == pSession->_iSessionMode && true == pSession->_bLogout)
 				pSession->_iSessionMode = CSession::MODE_LOGOUT_IN_AUTH;
 		}
 		else
@@ -327,21 +331,24 @@ bool CMMOServer::AuthThread_update(void)
 		{
 			pSession = (this->_pSessionArray[i]);
 
-			if (true == pSession->_bLogout)
+			if (CSession::MODE_LOGOUT_IN_AUTH == pSession->_iSessionMode && FALSE == pSession->_iSending)
 			{
-				pSession->_iSessionMode = CSession::MODE_LOGOUT_IN_AUTH;
+				pSession->_iSessionMode = CSession::MODE_WAIT_LOGOUT;
 				pSession->OnAuth_ClientLeave(false);
+				_iAuthThSessionCounter--;
 			}
 			else if (true == pSession->_bAuthToGame && CSession::MODE_AUTH == pSession->_iSessionMode)
 			{
 				pSession->_iSessionMode = CSession::MODE_AUTH_TO_GAME;
 				pSession->OnAuth_ClientLeave(true);
+				_iAuthThSessionCounter--;
 			}
 		}
 		else
 			continue;
 	}
 
+	InterlockedIncrement(&this->_iAuthThLoopCounter);
 	return true;
 }
 
@@ -358,18 +365,20 @@ bool CMMOServer::WorkerThread_update(void)
 	DWORD dwTransferedBytes = 0;
 	CSession *pSession = NULL;
 	long IOCount = 0;
+	long iRecvPacketCount;
 
 	while (true)
 	{
 		dwTransferedBytes = 0;
 		ZeroMemory(overlap, sizeof(OVERLAPPED));
 
-		bGQCSResult = GetQueuedCompletionStatus(this->_hIOCP, &dwTransferedBytes, (PULONG_PTR)pSession, &overlap, INFINITE);
+		bGQCSResult = GetQueuedCompletionStatus(this->_hIOCP, &dwTransferedBytes, (PULONG_PTR)&pSession, &overlap, INFINITE);
 
 		// 종료 메시지
 		if (NULL == overlap && 0 == dwTransferedBytes && NULL == pSession)
 		{
 			PostQueuedCompletionStatus(_hIOCP, 0, NULL, NULL);
+			SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Thread %d is down %d", GetCurrentThreadId(), GetLastError());
 			return 0;
 		}
 
@@ -387,11 +396,13 @@ bool CMMOServer::WorkerThread_update(void)
 			}
 			else if (overlap == &pSession->_recvOverlap)
 			{
-				pSession->CompleteRecv(dwTransferedBytes);
+				iRecvPacketCount = pSession->CompleteRecv(dwTransferedBytes);
+				InterlockedAdd(&this->_iRecvPacketCounter, iRecvPacketCount);
 				pSession->RecvPost(true);
 			}
 			else if (overlap == &pSession->_sendOverlap)
 			{
+				InterlockedAdd(&this->_iSendPacketCounter, pSession->_iSendCount);
 				pSession->CompleteSend();
 			}
 		}
@@ -463,12 +474,84 @@ bool CMMOServer::GameThread_update(void)
 			pSession = (this->_pSessionArray[i]);
 
 			if (CSession::MODE_AUTH_TO_GAME == pSession->_iSessionMode)
+			{
 				pSession->OnGame_ClientJoin();
+				_iGameThSessionCounter++;
+			}
+				
 		}
 		else
 			continue;
 	}
 
+	for (int i = 0; i < _iClientMax; ++i)
+	{
+		if (NULL != (this->_pSessionArray[i]))
+		{
+			pSession = (this->_pSessionArray[i]);
+
+			if (CSession::MODE_GAME == pSession->_iSessionMode)
+				pSession->OnGame_PacketProc();
+		}
+		else
+			continue;
+	}
+
+	OnGame_Update();
+
+	for (int i = 0; i < _iClientMax; ++i)
+	{
+		if (NULL != (this->_pSessionArray[i]))
+		{
+			pSession = (this->_pSessionArray[i]);
+
+			if (CSession::MODE_GAME == pSession->_iSessionMode && true == pSession->_bLogout)
+				pSession->_iSessionMode = CSession::MODE_LOGOUT_IN_GAME;
+		}
+		else
+			continue;
+	}
+
+	for (int i = 0; i < _iClientMax; ++i)
+	{
+		if (NULL != (this->_pSessionArray[i]))
+		{
+			pSession = (this->_pSessionArray[i]);
+
+			if (CSession::MODE_LOGOUT_IN_GAME == pSession->_iSessionMode && FALSE == pSession->_iSending)
+			{
+				pSession->_iSessionMode = CSession::MODE_WAIT_LOGOUT;
+				pSession->OnGame_ClientLeave();
+			}
+		}
+		else
+			continue;
+	}
+
+	int index;
+	for (int i = 0; i < _iClientMax; ++i)
+	{
+		if (NULL != (this->_pSessionArray[i]))
+		{
+			pSession = (this->_pSessionArray[i]);
+
+			if (CSession::MODE_WAIT_LOGOUT == pSession->_iSessionMode)
+			{
+				index = EXTRACTCLIENTINDEX(pSession->_clientID);
+				closesocket(pSession->_connectInfo->_clientSock);
+				_clientInfoPool.Free(pSession->_connectInfo);
+				pSession->OnGame_ClientRelease();
+				this->_sessionIndexStack.Push(index);
+				
+				this->_iGameThSessionCounter--;
+				InterlockedDecrement(&this->_iTotalSessionCounter);
+			}
+		}
+		else
+			continue;
+	}
+
+	InterlockedIncrement(&this->_iGameThLoopCounter);
 	return true;
 }
 
@@ -490,11 +573,15 @@ bool CMMOServer::MonitorThread_update(void)
 	_iAcceptTPS = _iAcceptCounter;
 	_iSendPacketTPS = _iSendPacketCounter;
 	_iRecvPacketTPS = _iRecvPacketCounter;
+	_iAuthThLoopTPS = _iAuthThLoopCounter;
+	_iGameThLoopTPS = _iGameThLoopCounter;
 
 	_iAcceptCounter = 0;
 	_iSendPacketCounter = 0;
 	_iRecvPacketCounter = 0;
-	
+	_iAuthThLoopCounter = 0;
+	_iGameThLoopCounter = 0;
+
 	return true;
 }
 
@@ -537,9 +624,12 @@ void CMMOServer::CSession::SetMode_Game(void)
 //
 //	streamQ인 _recvQ의 write를 옮겨주고, 완성된 패킷이 있으면 복호화 해서
 //	검증이 끝나면 _completeRecvQ에 넣어준다.
+//
 /////////////////////////////////////////////////////////////////
-void CMMOServer::CSession::CompleteRecv(int recvBytes)
+long CMMOServer::CSession::CompleteRecv(int recvBytes)
 {
+	int iRecvPacketCount = 0;
+
 	if (!this->_recvQ.MoveWrite(recvBytes))
 		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"recvQ is full");
 
@@ -584,16 +674,18 @@ void CMMOServer::CSession::CompleteRecv(int recvBytes)
 					SYSLOG(L"PACKET", LOG::LEVEL_DEBUG, L"[CLIENT_ID : %d] CheckSum Error", this->_clientID);
 					Disconnect();
 					packet->Free();
-					return;
+					break;
 				}
 
+				packet->ClearHeader();
 				this->_completeRecvQ.Enqueue(packet);
+				iRecvPacketCount++;
 			}
 			else
 				break;
 		}
 
-		return;
+		return iRecvPacketCount;
 	}
 }
 
@@ -605,6 +697,7 @@ void CMMOServer::CSession::CompleteRecv(int recvBytes)
 //	_sendQ에 있는 패킷에 대해 free() 호출해준다. _iSendCount는 WSASend를
 //	호출한 SendThread가 세팅해 줄 것이다. 
 //	NetServer와 다르게 SendThread가 있으므로 따로 SendPost는 호출하지 않는다.
+//
 /////////////////////////////////////////////////////////////////
 void CMMOServer::CSession::CompleteSend(void)
 {
@@ -698,7 +791,7 @@ void CMMOServer::CSession::RecvPost(bool incrementFlag)
 	WSABUF wsabuf[2];
 	int wsabufCount;
 
-	if (TRUE == incrementFlag)
+	if (true == incrementFlag)
 		InterlockedIncrement(&this->_IOCount);
 
 	wsabuf[0].len = this->_recvQ.GetNotBrokenPutsize();

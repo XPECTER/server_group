@@ -124,6 +124,9 @@ public:
 	// 버퍼 청소
 	void Clear(void);
 
+	// 헤더 삭제
+	void ClearHeader(void);
+
 	// 버퍼 포인터 반환
 	char *GetBuffPtr(void);
 	char *GetPayloadPtr(void);

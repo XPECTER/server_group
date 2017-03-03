@@ -8,6 +8,9 @@ class CGameServer : public CMMOServer
 protected:
 	class CPlayer : public CMMOServer::CSession
 	{
+	public:
+		void Player_Init(void);
+
 	protected:
 		virtual bool OnAuth_ClientJoin(void) override;
 		virtual bool OnAuth_PacketProc(void) override;
@@ -20,6 +23,10 @@ protected:
 
 	private:
 		void PacketProc_Login(CPacket *pRecvPacket);
+		void MakePacket_ResLogin(BYTE iStatus, __int64 iAccountNo, CPacket *pSendPacket);
+	
+		void PacketProc_ReqEcho(CPacket *pRecvPacket);
+		void MakePacket_ResEcho(__int64 iAccountNo, __int64 SendTick, CPacket *pSendPacket);
 	};
 
 public:

@@ -21,7 +21,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	LoadConfig();
 	
 	// 콘솔창 크기
-	system("mode con: lines=6 cols=80");
+	system("mode con: lines=18 cols=80");
 
 	time_t startTime = time(NULL);
 	tm t;
@@ -37,10 +37,21 @@ int _tmain(int argc, _TCHAR* argv[])
 
 		wprintf_s(L"SERVER ON TIME : [%04d-%02d-%02d %02d:%02d:%02d]\n", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
 		wprintf_s(L"=========================================================\n");
-		wprintf_s(L"Accept Total\t: %I64u\n", g_pGameServer->_iAcceptTotal);
-		wprintf_s(L"AcceptTPS\t: %d\n\n", g_pGameServer->_iAcceptTPS);
-		//wprintf_s(L"");
-		//wprintf_s(L"");
+		wprintf_s(L"Accept Total\t\t: %I64u\n", g_pGameServer->_iAcceptTotal);
+		wprintf_s(L"AcceptTPS\t\t: %d\n", g_pGameServer->_iAcceptTPS);
+		wprintf_s(L"SessionCount\t\t: %d\n", g_pGameServer->_iTotalSessionCounter);
+		wprintf_s(L"=========================================================\n");
+		wprintf_s(L"AuthTh Loop TPS\t\t: %d\n", g_pGameServer->_iAuthThLoopTPS);
+		wprintf_s(L"Session in AuthMode\t: %d\n", g_pGameServer->_iAuthThSessionCounter);
+		wprintf_s(L"=========================================================\n");
+		wprintf_s(L"GameTh Loop TPS\t\t: %d\n", g_pGameServer->_iGameThLoopTPS);
+		wprintf_s(L"Session in GameMode\t: %d\n", g_pGameServer->_iGameThSessionCounter);
+		wprintf_s(L"=========================================================\n");
+		wprintf_s(L"RecvPacketCount\t\t: %d\n", g_pGameServer->_iRecvPacketTPS);
+		wprintf_s(L"SendPacketCount\t\t: %d\n", g_pGameServer->_iSendPacketTPS);
+		wprintf_s(L"=========================================================\n");
+		wprintf_s(L"Packet Pool Chunk Size\t: %d\n", CPacket::PacketPool.GetAllocCount());
+		wprintf_s(L"Using Packet\t\t: %d\n", CPacket::PacketPool.GetUseCount());
 
 		Sleep(998);
 	}
@@ -86,6 +97,20 @@ bool LoadConfig(void)
 				return false;
 			}
 
+			wsprintf(szKey, L"NET_THREAD_NUM");
+			if (!parser.GetValue(szKey, &g_Config.iNetThreadNum))
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
+				return false;
+			}
+			
+			wsprintf(szKey, L"NET_NAGLE_OPT");
+			if (!parser.GetValue(szKey, &g_Config.bNetNagleOpt))
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
+				return false;
+			}
+
 			wsprintf(szKey, L"LAN_BIND_IP");
 			if (!parser.GetValue(szKey, g_Config.szNetBindIP, 16))
 			{
@@ -95,6 +120,20 @@ bool LoadConfig(void)
 
 			wsprintf(szKey, L"LAN_BIND_PORT");
 			if (!parser.GetValue(szKey, &g_Config.iLanBindPort))
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
+				return false;
+			}
+
+			wsprintf(szKey, L"LAN_THREAD_NUM");
+			if (!parser.GetValue(szKey, &g_Config.iLanThreadNum))
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
+				return false;
+			}
+
+			wsprintf(szKey, L"LAN_NAGLE_OPT");
+			if (!parser.GetValue(szKey, &g_Config.bLanNagleOpt))
 			{
 				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
 				return false;
@@ -242,7 +281,7 @@ void KeyProcess(void)
 			case 'Q':
 			case 'q':
 			{
-				g_pGameServer->Stop();
+				//g_pGameServer->Stop();
 				break;
 			}
 		}

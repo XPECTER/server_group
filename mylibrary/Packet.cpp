@@ -126,6 +126,12 @@ void CPacket::Clear(void)
 	m_bEncode = false;
 }
 
+void CPacket::ClearHeader(void)
+{
+	memset(this->m_chpBuff, 0, m_iHeaderSize);
+	return;
+}
+
 
 ///////////////////////////////////////////////////
 // 버퍼에 데이터를 넣는다. 반환하는 값은 복사한 사이즈
