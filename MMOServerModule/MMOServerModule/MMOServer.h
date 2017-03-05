@@ -83,14 +83,14 @@ protected:
 		friend class CMMOServer;
 	};
 
+	
+
 public:
 	CMMOServer(int iClientMax);
 	virtual ~CMMOServer();
 
 	bool Start(wchar_t *szIP, int iPort, bool bNagleOpt, int iThreadNum);
 	bool Stop();
-
-	
 
 protected:
 	virtual bool SetSessionArray(int index, void *pSession);
@@ -102,79 +102,101 @@ private:
 	bool Session_Init(void);
 	bool Thread_Init(int iThreadNum);
 
-	
-
 public:
 	bool _bStop;
 
 private:
+	// 서버 listen소켓
 	SOCKET _listenSock;
+
+	// IOCP 핸들
 	HANDLE _hIOCP;
 
+	// 연결받을 클라이언트 최대 수치
 	int _iClientMax;
+
+	// 클라이언트에게 부여할 unique번호
 	unsigned __int64 _iClientID;
 
-	CLockFreeStack<int> _sessionIndexStack;
-
+	// 클라이언트 연결 정보를 관리할 풀
 	CMemoryPool<st_ACCEPT_CLIENT_INFO> _clientInfoPool;
+
+	// 클라이언트 연결 정보를 AuthTh에게 넘겨주기 위한 큐
 	CLockFreeQueue<st_ACCEPT_CLIENT_INFO *> _clientInfoQueue;
 
+	// 세션 포인터를 저장할 배열
 	CSession **_pSessionArray;
 
-	//////////////////////////////////////////////////////
-	// 모니터링 함수
-public:
-	int GetSessionCount(void);
-	int GetPlayerCount(void);
+	// 세션 포인터 배열의 인덱스를 저장
+	CLockFreeStack<int> _sessionIndexStack;
+
+	//// DB 저장 요청 메시지 풀
+	//CMemoryPool<st_DBWRITER_MSG> _databaseMsgPool;
+
+	//// DB 저장 요청 메지시 큐
+	//CLockFreeQueue<st_DBWRITER_MSG *> _databaseMsgQueue;
 
 	//////////////////////////////////////////////////////
 	// 모니터링 변수
+	//////////////////////////////////////////////////////
 public:
-	unsigned __int64 _iAcceptTotal;
-	long _iAcceptTPS;
-	long _iSendPacketTPS;
-	long _iRecvPacketTPS;
+	unsigned __int64 _iAcceptTotal;		// 현재까지 Accept받은 수
+	long _iAcceptTPS;					// 초당 Accept 횟수
+	long _iSendPacketTPS;				// 초당 Send한 Packet 수
+	long _iRecvPacketTPS;				// 초당 Recv한 Packet 수
 
-	long _iTotalSessionCounter;
+	long _iTotalSessionCounter;			// 현재 사용중인 세션 수
 
-	long _iAuthThLoopTPS;
-	long _iAuthThSessionCounter;
+	long _iAuthThLoopTPS;				// 초당 AuthTh 루프 횟수
+	long _iAuthThSessionCounter;		// Auth모드 세션 수
 
-	long _iGameThLoopTPS;
-	long _iGameThSessionCounter;
+	long _iGameThLoopTPS;				// 초당 GameTh 루프 횟수
+	long _iGameThSessionCounter;		// Game모드 세션 수
 	
 private:
-	long _iAcceptCounter;
-	long _iSendPacketCounter;
-	long _iRecvPacketCounter;
+	long _iAcceptCounter;				// Accept 횟수 카운터
+	long _iSendPacketCounter;			// Send한 Packet 수 카운터
+	long _iRecvPacketCounter;			// Recv한 Packet 수 카운터
 	
-	long _iAuthThLoopCounter;
-	long _iGameThLoopCounter;
+	long _iAuthThLoopCounter;			// AuthTh 루프 수 카운터
+	long _iGameThLoopCounter;			// AuthTh 루프 수 카운터
 
 	//////////////////////////////////////////////////////
 	// Thread 관련
+	//////////////////////////////////////////////////////
 private:
+	// Accept용 스레드
 	HANDLE						_hAcceptThread;
 	static unsigned __stdcall	AcceptThreadFunc(void *lpParam);
 	bool						AcceptThread_update(void);
 
+	// 인증 처리 스레드
 	HANDLE						_hAuthThread;
 	static unsigned __stdcall	AuthThreadFunc(void *lpParam);
 	bool						AuthThread_update(void);
 	
+	// IOCP 처리 스레드
 	HANDLE						*_hWorkerThread;
 	static unsigned __stdcall	WorkerThreadFunc(void *lpParam);
 	bool						WorkerThread_update(void);
 	
+	// Send용 스레드
 	HANDLE						_hSendThread;
 	static unsigned __stdcall	SendThreadFunc(void *lpParam);
 	bool						SendThread_update(void);
 	
+	// 게임 컨텐츠 처리 스레드
 	HANDLE						_hGameThread;
 	static unsigned __stdcall	GameThreadFunc(void *lpParam);
 	bool						GameThread_update(void);
 
+	// 모니터링 스레드
 	HANDLE						_hMonitorThread;
 	static unsigned __stdcall	MonitorThreadFunc(void *lpParam);
 	bool						MonitorThread_update(void);
+
+	// 데이터베이트 처리 스레드
+	HANDLE						_hDatabaseThread;
+	static unsigned __stdcall	DatabaseThreadFunc(void *lpParam);
+	bool						DatabaseThread_update(void);
 };

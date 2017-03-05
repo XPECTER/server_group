@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "DBTypeEnum.h"
 #include "MMOServer.h"
 
 CMMOServer::CMMOServer(int iClientMax)
@@ -245,7 +246,9 @@ bool CMMOServer::AuthThread_update(void)
 	st_ACCEPT_CLIENT_INFO *pClientConnectInfo = NULL;
 	CSession *pSession = NULL;
 	int iBlankIndex = INVALID_SESSION_INDEX;
+	int iProcessCounter;
 
+	iProcessCounter = 0;
 	while (0 < _clientInfoQueue.GetUseSize())
 	{
 		_clientInfoQueue.Dequeue(&pClientConnectInfo);
@@ -293,6 +296,13 @@ bool CMMOServer::AuthThread_update(void)
 		_iClientID++;
 		_iAuthThSessionCounter++;
 		InterlockedIncrement(&this->_iTotalSessionCounter);
+
+		iProcessCounter++;
+		if (200 <= iProcessCounter)
+		{
+			iProcessCounter = 0;
+			break;
+		}
 	}
 
 	for (int i = 0; i < _iClientMax; ++i)
@@ -348,7 +358,7 @@ bool CMMOServer::AuthThread_update(void)
 			continue;
 	}
 
-	InterlockedIncrement(&this->_iAuthThLoopCounter);
+	this->_iAuthThLoopCounter++;
 	return true;
 }
 
@@ -476,9 +486,9 @@ bool CMMOServer::GameThread_update(void)
 			if (CSession::MODE_AUTH_TO_GAME == pSession->_iSessionMode)
 			{
 				pSession->OnGame_ClientJoin();
+				pSession->_iSessionMode = CSession::MODE_GAME;
 				_iGameThSessionCounter++;
 			}
-				
 		}
 		else
 			continue;
@@ -491,7 +501,12 @@ bool CMMOServer::GameThread_update(void)
 			pSession = (this->_pSessionArray[i]);
 
 			if (CSession::MODE_GAME == pSession->_iSessionMode)
+			{
 				pSession->OnGame_PacketProc();
+
+				if (true == pSession->_bLogout)
+					pSession->_iSessionMode = CSession::MODE_LOGOUT_IN_GAME;
+			}
 		}
 		else
 			continue;
@@ -499,7 +514,7 @@ bool CMMOServer::GameThread_update(void)
 
 	OnGame_Update();
 
-	for (int i = 0; i < _iClientMax; ++i)
+	/*for (int i = 0; i < _iClientMax; ++i)
 	{
 		if (NULL != (this->_pSessionArray[i]))
 		{
@@ -510,7 +525,7 @@ bool CMMOServer::GameThread_update(void)
 		}
 		else
 			continue;
-	}
+	}*/
 
 	for (int i = 0; i < _iClientMax; ++i)
 	{
@@ -521,6 +536,7 @@ bool CMMOServer::GameThread_update(void)
 			if (CSession::MODE_LOGOUT_IN_GAME == pSession->_iSessionMode && FALSE == pSession->_iSending)
 			{
 				pSession->_iSessionMode = CSession::MODE_WAIT_LOGOUT;
+				this->_iGameThSessionCounter--;
 				pSession->OnGame_ClientLeave();
 			}
 		}
@@ -543,7 +559,6 @@ bool CMMOServer::GameThread_update(void)
 				pSession->OnGame_ClientRelease();
 				this->_sessionIndexStack.Push(index);
 				
-				this->_iGameThSessionCounter--;
 				InterlockedDecrement(&this->_iTotalSessionCounter);
 			}
 		}
@@ -551,7 +566,7 @@ bool CMMOServer::GameThread_update(void)
 			continue;
 	}
 
-	InterlockedIncrement(&this->_iGameThLoopCounter);
+	this->_iGameThLoopCounter++;
 	return true;
 }
 
@@ -585,15 +600,22 @@ bool CMMOServer::MonitorThread_update(void)
 	return true;
 }
 
-int CMMOServer::GetSessionCount(void)
+unsigned __stdcall CMMOServer::DatabaseThreadFunc(void *lpParam)
 {
-	return 0;
+	CMMOServer *pServer = (CMMOServer *)lpParam;
+	return pServer->DatabaseThread_update();
 }
 
-int CMMOServer::GetPlayerCount(void)
+bool CMMOServer::DatabaseThread_update(void)
 {
-	return 0;
+	while (!_bStop && (0 >= _databaseMsgQueue.GetUseSize()))
+	{
+		Sleep(100);
+	}
+
+	return true;
 }
+
 
 bool CMMOServer::CSession::SendPacket(CPacket *pSendPacket)
 {

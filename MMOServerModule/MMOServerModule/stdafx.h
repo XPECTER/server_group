@@ -6,6 +6,7 @@
 #pragma once
 #pragma comment (lib, "Ws2_32.lib")
 #pragma comment (lib, "Winmm.lib")
+#pragma comment (lib, "mysqlclient.lib")
 
 #include "targetver.h"
 
@@ -17,6 +18,8 @@
 #include <process.h>
 #include <conio.h>
 
+#include <my_global.h>
+#include <mysql.h>
 
 // TODO: 프로그램에 필요한 추가 헤더는 여기에서 참조합니다.
 #include "../../mylibrary/APIHook.h"

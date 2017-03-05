@@ -102,7 +102,7 @@ bool CGameServer::CPlayer::OnAuth_ClientLeave(bool bToGame)
 
 bool CGameServer::CPlayer::OnGame_ClientJoin(void)
 {
-	this->_iSessionMode = en_SESSION_MODE::MODE_GAME;
+	
 	return true;
 }
 
