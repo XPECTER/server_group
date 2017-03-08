@@ -40,3 +40,4 @@
 #include "../../mylibrary/LanClient.h"
 
 #include "Config.h"
+#include "CommonProtocol.h"

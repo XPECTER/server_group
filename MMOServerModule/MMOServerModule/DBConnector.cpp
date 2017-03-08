@@ -15,3 +15,8 @@ CDBConnector::CDBConnector()
 	mysql_init(&this->db_gamedb);
 	mysql_init(&this->db_logdb);
 }
+
+CDBConnector::~CDBConnector()
+{
+
+}

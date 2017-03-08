@@ -2,8 +2,6 @@
 //
 
 #include "stdafx.h"
-#include "MMOServer.h"
-#include "LanClient_Game.h"
 #include "GameServer.h"
 
 CMemoryPoolTLS<CPacket> CPacket::PacketPool(300, true);
@@ -29,10 +27,11 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	CGameServer GameServer(g_Config.iClientMax);
 	g_pGameServer = &GameServer;
-	g_pGameServer->Start(g_Config.szNetBindIP, g_Config.iNetBindPort, g_Config.bNetNagleOpt, g_Config.iNetThreadNum);
+	//g_pGameServer->Start(g_Config.szNetBindIP, g_Config.iNetBindPort, g_Config.bNetNagleOpt, g_Config.iNetThreadNum);
 
 	while (true)
 	{
+		g_pGameServer->Start();
 		KeyProcess();
 
 		wprintf_s(L"SERVER ON TIME : [%04d-%02d-%02d %02d:%02d:%02d]\n", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
@@ -83,6 +82,13 @@ bool LoadConfig(void)
 		}
 		else
 		{
+			wsprintf(szKey, L"SERVER_GROUP_NAME");
+			if (!parser.GetValue(szKey, g_Config.szServerGroupName, 32))
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
+				return false;
+			}
+
 			wsprintf(szKey, L"NET_BIND_IP");
 			if (!parser.GetValue(szKey, g_Config.szNetBindIP, 16))
 			{
@@ -274,7 +280,8 @@ void KeyProcess(void)
 			case 'S':
 			case 's':
 			{
-				g_pGameServer->Start(g_Config.szNetBindIP, g_Config.iNetBindPort, g_Config.bNetNagleOpt, g_Config.iNetThreadNum);
+				//g_pGameServer->Start(g_Config.szNetBindIP, g_Config.iNetBindPort, g_Config.bNetNagleOpt, g_Config.iNetThreadNum);
+				g_pGameServer->Start();
 				break;
 			}
 

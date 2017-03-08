@@ -7,6 +7,11 @@ typedef __int64 CLIENT_ID;
 #define EXTRACTCLIENTID(ClientID) ((__int64)ClientID & 0x00FFFFFF)
 
 #define INVALID_SESSION_INDEX -1
+
+#define dfTHREAD_UPDATE_TICK_AUTH 3
+#define dfTHREAD_UPDATE_TICK_GAME 10
+#define dfTHREAD_UPDATE_TICK_SEND 1
+
 class CMMOServer
 {
 public:
@@ -15,7 +20,6 @@ public:
 		dfTHREAD_UPDATE_TIME_AUTH = 3,
 		dfTHREAD_UPDATE_TIME_GAME = 10,
 		dfTHREAD_UPDATE_TIME_SEND = 1,
-		dfTHREAD_UPDATE_TIME_MONITOR = 998,
 	};
 
 protected:
@@ -106,6 +110,9 @@ public:
 	bool _bStop;
 
 private:
+	// 실행중인가
+	bool _bStart;
+
 	// 서버 listen소켓
 	SOCKET _listenSock;
 
@@ -130,12 +137,6 @@ private:
 	// 세션 포인터 배열의 인덱스를 저장
 	CLockFreeStack<int> _sessionIndexStack;
 
-	//// DB 저장 요청 메시지 풀
-	//CMemoryPool<st_DBWRITER_MSG> _databaseMsgPool;
-
-	//// DB 저장 요청 메지시 큐
-	//CLockFreeQueue<st_DBWRITER_MSG *> _databaseMsgQueue;
-
 	//////////////////////////////////////////////////////
 	// 모니터링 변수
 	//////////////////////////////////////////////////////
@@ -153,7 +154,7 @@ public:
 	long _iGameThLoopTPS;				// 초당 GameTh 루프 횟수
 	long _iGameThSessionCounter;		// Game모드 세션 수
 	
-private:
+protected:
 	long _iAcceptCounter;				// Accept 횟수 카운터
 	long _iSendPacketCounter;			// Send한 Packet 수 카운터
 	long _iRecvPacketCounter;			// Recv한 Packet 수 카운터
@@ -189,14 +190,4 @@ private:
 	HANDLE						_hGameThread;
 	static unsigned __stdcall	GameThreadFunc(void *lpParam);
 	bool						GameThread_update(void);
-
-	// 모니터링 스레드
-	HANDLE						_hMonitorThread;
-	static unsigned __stdcall	MonitorThreadFunc(void *lpParam);
-	bool						MonitorThread_update(void);
-
-	// 데이터베이트 처리 스레드
-	HANDLE						_hDatabaseThread;
-	static unsigned __stdcall	DatabaseThreadFunc(void *lpParam);
-	bool						DatabaseThread_update(void);
 };

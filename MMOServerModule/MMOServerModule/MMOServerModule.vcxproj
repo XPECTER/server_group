@@ -162,7 +162,10 @@
     <ClInclude Include="DBConnector.h" />
     <ClInclude Include="DBTypeEnum.h" />
     <ClInclude Include="GameServer.h" />
-    <ClInclude Include="LanClient_Game.h" />
+    <ClInclude Include="GlobalTime.h" />
+    <ClInclude Include="LanClient_Agent.h" />
+    <ClInclude Include="LanClient_Login.h" />
+    <ClInclude Include="LanClient_Monitoring.h" />
     <ClInclude Include="MMOServer.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
@@ -230,7 +233,12 @@
     </ClCompile>
     <ClCompile Include="DBConnector.cpp" />
     <ClCompile Include="GameServer.cpp" />
-    <ClCompile Include="LanClient_Game.cpp" />
+    <ClCompile Include="GlobalTime.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="LanClient_Agent.cpp" />
+    <ClCompile Include="LanClient_Login.cpp" />
+    <ClCompile Include="LanClient_Monitoring.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MMOServer.cpp" />
     <ClCompile Include="stdafx.cpp">

@@ -4,6 +4,8 @@ class CConfig
 {
 public:
 	// Network Block
+	wchar_t szServerGroupName[32];			// 서버 이름
+
 	wchar_t szNetBindIP[16];				// Bind할 Net서버 IP주소
 	int		iNetBindPort;					// Bind할 Net서버 Port번호
 	int		iNetThreadNum;					// Net서버 thread 개수

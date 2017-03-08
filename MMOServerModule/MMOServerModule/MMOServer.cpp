@@ -4,6 +4,7 @@
 
 CMMOServer::CMMOServer(int iClientMax)
 {
+	_bStart = false;
 	_bStop = false;
 
 	_iClientMax = iClientMax;
@@ -17,7 +18,6 @@ CMMOServer::CMMOServer(int iClientMax)
 	_hWorkerThread = NULL;
 	_hSendThread = INVALID_HANDLE_VALUE;
 	_hGameThread = INVALID_HANDLE_VALUE;
-	_hMonitorThread = INVALID_HANDLE_VALUE;
 
 	_pSessionArray = new CSession*[_iClientMax];
 }
@@ -29,6 +29,9 @@ CMMOServer::~CMMOServer()
 
 bool CMMOServer::Start(wchar_t *szIP, int iPort, bool bNagleOpt, int iThreadNum)
 {
+	if (true == this->_bStart)
+		return true;
+
 #pragma region print_serverinfo
 	SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L" ############## GAME SERVER START ##############");
 	SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L" ##\t    ServerBindIP : %s", szIP);
@@ -95,6 +98,8 @@ bool CMMOServer::Start(wchar_t *szIP, int iPort, bool bNagleOpt, int iThreadNum)
 
 	Session_Init();
 	Thread_Init(iThreadNum);
+
+	_bStart = true;
 	return true;
 }
 
@@ -109,7 +114,8 @@ bool CMMOServer::Stop()
 	//HANDLE 배열 세팅 
 	//WaitForMultipleObjects()
 
-	SYSLOG(L"", LOG::LEVEL_ERROR, L"############ GAME SERVER STOP ############");
+	SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"############ GAME SERVER STOP ############");
+	_bStart = false;
 	return true;
 }
 
@@ -172,12 +178,7 @@ bool CMMOServer::Thread_Init(int iThreadNum)
 		return false;
 	}
 
-	_hMonitorThread = (HANDLE)_beginthreadex(NULL, 0, MonitorThreadFunc, this, NULL, NULL);
-	if (NULL == _hMonitorThread)
-	{
-		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Create MonitoringTh failed");
-		return false;
-	}
+	
 
 	return true;
 }
@@ -312,7 +313,12 @@ bool CMMOServer::AuthThread_update(void)
 			pSession = (this->_pSessionArray[i]);
 
 			if (CSession::MODE_AUTH == pSession->_iSessionMode)
+			{
 				pSession->OnAuth_PacketProc();
+
+				if (true == pSession->_bLogout && FALSE == pSession->_iSending)
+					pSession->_iSessionMode = CSession::MODE_LOGOUT_IN_AUTH;
+			}
 		}
 		else
 			continue;
@@ -320,7 +326,7 @@ bool CMMOServer::AuthThread_update(void)
 
 	OnAuth_Update();
 
-	for (int i = 0; i < _iClientMax; ++i)
+	/*for (int i = 0; i < _iClientMax; ++i)
 	{
 		if (NULL != (this->_pSessionArray[i]))
 		{
@@ -331,7 +337,7 @@ bool CMMOServer::AuthThread_update(void)
 		}
 		else
 			continue;
-	}
+	}*/
 
 	// 세션 배열을 돌면서 MODE_LOGOUT_IN_AUTH 인 얘들을 WAIT_LOGOUT으로 변경
 	// 후 OnAuth_ClientLeave(false) 호출
@@ -504,7 +510,7 @@ bool CMMOServer::GameThread_update(void)
 			{
 				pSession->OnGame_PacketProc();
 
-				if (true == pSession->_bLogout)
+				if (true == pSession->_bLogout && FALSE == pSession->_iSending)
 					pSession->_iSessionMode = CSession::MODE_LOGOUT_IN_GAME;
 			}
 		}
@@ -533,7 +539,7 @@ bool CMMOServer::GameThread_update(void)
 		{
 			pSession = (this->_pSessionArray[i]);
 
-			if (CSession::MODE_LOGOUT_IN_GAME == pSession->_iSessionMode && FALSE == pSession->_iSending)
+			if (CSession::MODE_LOGOUT_IN_GAME == pSession->_iSessionMode)
 			{
 				pSession->_iSessionMode = CSession::MODE_WAIT_LOGOUT;
 				this->_iGameThSessionCounter--;
@@ -570,51 +576,6 @@ bool CMMOServer::GameThread_update(void)
 	return true;
 }
 
-unsigned __stdcall CMMOServer::MonitorThreadFunc(void *lpParam)
-{
-	CMMOServer *pServer = (CMMOServer *)lpParam;
-
-	while (!pServer->_bStop)
-	{
-		pServer->MonitorThread_update();
-		Sleep(dfTHREAD_UPDATE_TIME_MONITOR);
-	}
-
-	return 0;
-}
-
-bool CMMOServer::MonitorThread_update(void)
-{
-	_iAcceptTPS = _iAcceptCounter;
-	_iSendPacketTPS = _iSendPacketCounter;
-	_iRecvPacketTPS = _iRecvPacketCounter;
-	_iAuthThLoopTPS = _iAuthThLoopCounter;
-	_iGameThLoopTPS = _iGameThLoopCounter;
-
-	_iAcceptCounter = 0;
-	_iSendPacketCounter = 0;
-	_iRecvPacketCounter = 0;
-	_iAuthThLoopCounter = 0;
-	_iGameThLoopCounter = 0;
-
-	return true;
-}
-
-unsigned __stdcall CMMOServer::DatabaseThreadFunc(void *lpParam)
-{
-	CMMOServer *pServer = (CMMOServer *)lpParam;
-	return pServer->DatabaseThread_update();
-}
-
-bool CMMOServer::DatabaseThread_update(void)
-{
-	while (!_bStop && (0 >= _databaseMsgQueue.GetUseSize()))
-	{
-		Sleep(100);
-	}
-
-	return true;
-}
 
 
 bool CMMOServer::CSession::SendPacket(CPacket *pSendPacket)

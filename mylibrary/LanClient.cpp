@@ -65,9 +65,44 @@ bool CLanClient::Connect(wchar_t *szClientBindIP, wchar_t *szServerIP, int iServ
 		}
 	}
 	
+	// 소켓을 non-blocking으로 바꿈
+	unsigned long iMode = 1;
+	int iResult = ioctlsocket(this->_ClientSock, FIONBIO, &iMode);
+	if (iResult != NO_ERROR)
+		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"ioctlsocket failed with error : %d", iResult);
+
+	int err;
+	// connect 시도
 	if (SOCKET_ERROR == connect(this->_ClientSock, (SOCKADDR *)&this->_ServerAddr, 16))
 	{
-		SYSLOG(L"SYSTEM", LOG::LEVEL_WARNING, L"connect to server failed. ErrorNo : %d", WSAGetLastError());
+		// 처음엔 WSAEWOULDBLOCK이 뜨고 2번째는 이미 연결된 것이라고 뜬다.
+		err = WSAGetLastError();
+		if (WSAEISCONN != err && WSAEWOULDBLOCK != err)
+		{
+			SYSLOG(L"SYSTEM", LOG::LEVEL_DEBUG, L"connect to server failed. ErrorNo : %d", err);
+			return false;
+		}
+	}
+
+	iMode = 0;
+	iResult = ioctlsocket(this->_ClientSock, FIONBIO, &iMode);
+	if (iResult != NO_ERROR)
+		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"ioctlsocket failed with error : %d", iResult);
+	
+	TIMEVAL Timeout;
+	Timeout.tv_sec = 0;
+	Timeout.tv_usec = 500;
+
+	fd_set Write, Err;
+	FD_ZERO(&Write);
+	FD_ZERO(&Err);
+	FD_SET(this->_ClientSock, &Write);
+	FD_SET(this->_ClientSock, &Err);
+
+	// check if the socket is ready
+	select(0, NULL, &Write, &Err, &Timeout);
+	if (!FD_ISSET(this->_ClientSock, &Write))
+	{
 		return false;
 	}
 	
@@ -85,12 +120,11 @@ bool CLanClient::Connect(wchar_t *szClientBindIP, wchar_t *szServerIP, int iServ
 		}
 	}
 
-	if (!CreateIoCompletionPort((HANDLE)this->_ClientSock, this->_hIOCP, NULL, dfWORKER_THREAD_NUM))
+	if (!CreateIoCompletionPort((HANDLE)this->_ClientSock, this->_hIOCP, (ULONG_PTR)this->_ClientSock, iThreadNum))
 	{
 		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"regist iocp error.", GetLastError());
 		return false;
 	}
-		
 	
 	this->_bConnected = true;
 	InterlockedIncrement64(&this->_IOCompare->IOCount);
@@ -119,6 +153,7 @@ bool CLanClient::WorkerThread_update(void)
 
 	while (true)
 	{
+		sock = INVALID_SOCKET;
 		transferredBytes = 0;
 		ZeroMemory(overlapped, sizeof(OVERLAPPED));
 

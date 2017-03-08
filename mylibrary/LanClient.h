@@ -25,6 +25,7 @@
 #include "ConfigParser.h"
 #include "Profiler.h"
 
+#define dfSERVER_GROUP_NAME_LEN 32
 
 #pragma pack(push, 1)
 struct HEADER
@@ -82,12 +83,16 @@ private:
 	bool						WorkerThread_update(void);
 
 protected:
-	wchar_t _szServerGroupName[32];
+	wchar_t _szServerGroupName[dfSERVER_GROUP_NAME_LEN];
+
+public:
+	bool	_bConnected;
+
 private:
 	SOCKET	_ClientSock;
 	SOCKADDR_IN _ServerAddr;
 
-	bool	_bConnected;
+	
 	bool	_bEnableNagle;
 	wchar_t _szClientBindIP[16];
 	int		_iClientBindPort;
