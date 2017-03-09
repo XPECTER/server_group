@@ -22,6 +22,9 @@ public:
 	wchar_t szMonitoringServerIP[16];		// 모니터링 서버에 연결할 IP주소
 	int		iMonitoringServerPort;			// 모니터링 서버에 연결할 Port번호
 
+	wchar_t szAgentServerIP[16];			// 에이전트 서버에 연결할 IP주소
+	int		iAgentServerPort;				// 에이전트 서버에 연결할 Port번호
+
 	// System Block
 	int		iClientMax;						// 접속받을 최대 클라이언트 수
 	int		iPacketCode;
@@ -33,6 +36,9 @@ public:
 	bool	bPrintConsole;
 	bool	bPrintFile;
 	bool	bPrintDatabase;
+
+	// DATABASE Block
+
 };
 
 extern CConfig g_Config;

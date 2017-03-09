@@ -8,7 +8,17 @@ public:
 	CLanClient_Monitoring(CGameServer *pServer);
 	virtual ~CLanClient_Monitoring();
 
-
+	void SendPacket_SessionCount(int iTotalSessionCount);
+	void SendPacket_AuthPlayer(int iAuthThreadSessionCount);
+	void SendPacket_GamePlayer(int iGameThreadSessionCount);
+	void SendPacket_AcceptTPS(int iAcceptTPS);
+	void SendPacket_RecvPacketTPS(int iRecvPacketTPS);
+	void SendPacket_SendPacketTPS(int iSendPacketTPS);
+	void SendPacket_DatabaseWriteTPS(int iDatabaseWriteTPS);
+	void SendPacket_DatabaseMsgCount(int iDatabaseMsgCount);
+	void SendPacket_AuthThreadTPS(int iAuthThreadLoopTPS);
+	void SendPacket_GameThreadTPS(int iGameThreadLoopTPS);
+	void SendPacket_PacketUseCount(int iPacketUseCount);
 protected:
 	virtual void OnEnterJoinServer(void) override;			// 서버와의 연결 성공 후
 	virtual void OnLeaveServer(void) override;				// 서버와의 연결이 끊어졌을 때
@@ -18,7 +28,6 @@ protected:
 
 private:
 	void SendPacket_LoginToMonitoringServer();
-	void MakePacket_LoginToMonitoringServer(CPacket *pSendPacket);
 
 private:
 	CGameServer *_pGameServer;

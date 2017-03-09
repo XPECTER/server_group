@@ -5,10 +5,26 @@
 #include "LanClient_Agent.h"
 #include "LanClient_Monitoring.h"
 
+#define dfDUMMY_ACCOUNTNO_LIMIT 999999
+
 #define dfAUTH_PACKET_PROC_REPEAT 1
 #define dfGAME_PACKET_PROC_REPEAT 3
 
 #define dfTHREAD_UPDATE_TICK_MONITOR 999
+#define dfTHREAD_UPDATE_TICK_DATABASE 5
+
+#define dfSESSION_KEY_LEN 64
+
+#define dfSESSION_KEY_TIMEOUT_TICK 20000
+#define dfGAMETHREAD_HEARTBEAT_TICK 3000
+#define dfDATABASETHREAD_HEARTBEAT_TICK 3000
+#define dfCLIENT_HEARTBEAT_TICK 40000
+
+struct st_SESSION_KEY
+{
+	char	_sessionKey[64];
+	__int64	_timeoutTick;
+};
 
 class CGameServer : public CMMOServer
 {
@@ -16,7 +32,11 @@ protected:
 	class CPlayer : public CMMOServer::CSession
 	{
 	public:
-		void Player_Init(void);
+		CPlayer();
+		virtual ~CPlayer();
+
+		void Player_Init(CGameServer *pGameServer);
+		void CheckHeartBeat(void);
 
 	protected:
 		virtual bool OnAuth_ClientJoin(void) override;
@@ -30,10 +50,22 @@ protected:
 
 	private:
 		void PacketProc_Login(CPacket *pRecvPacket);
-		void MakePacket_ResLogin(BYTE iStatus, __int64 iAccountNo, CPacket *pSendPacket);
+		void MakePacket_ResLogin(CPacket *pSendPacket, BYTE byStatus, __int64 iAccountNo);
 	
+		void PacketProc_CharacterSelect(CPacket *pRecvPacket);
+		void MakePacket_ResCharacterSelect(CPacket *pSendPacket, BYTE byStatus);
+
 		void PacketProc_ReqEcho(CPacket *pRecvPacket);
-		void MakePacket_ResEcho(__int64 iAccountNo, __int64 SendTick, CPacket *pSendPacket);
+		void MakePacket_ResEcho(CPacket *pSendPacket, __int64 iAccountNo, __int64 SendTick);
+
+		void PacketProc_ClientHeartBeat(CPacket *pRecvPacket);
+	
+	private:
+		CGameServer *_pGameServer;
+
+		BYTE _byParty;
+		__int64 _accountNo;
+		__int64 _heartBeatTick;
 	};
 
 public:
@@ -41,22 +73,22 @@ public:
 	~CGameServer();
 
 	bool Start(void);
+	void Stop(void);
+
+	/////////////////////////////////////////////////////////////
+	// 세션키 관리
+	/////////////////////////////////////////////////////////////
+	void AddSessionKey(__int64 accountNo, char *sessionKey);
+	bool CheckSessionKey(__int64 accountNo, char *sessionKey);
+
 protected:
 	virtual void OnAuth_Update(void) override;
 	virtual void OnGame_Update(void) override;
+	virtual void OnHeartBeat(void) override;
 
 private:
-	void SendPacket_SessionCount(void);
-	void SendPacket_AuthPlayer(void);
-	void SendPacket_GamePlayer(void);
-	void SendPacket_AcceptTPS(void);
-	void SendPacket_RecvPacketTPS(void);
-	void SendPacket_SendPacketTPS(void);
-	void SendPacket_DatabaseWriteTPS(void);
-	void SendPacket_DatabaseMsgCount(void);
-	void SendPacket_AuthThreadTPS(void);
-	void SendPacket_GameThreadTPS(void);
-	void SendPacket_PacketUseCount(void);
+	void Schedule_SessionKey(void);
+	void Schedule_Client(void);
 
 private:
 	CLanClient_Login *_lanClient_Login;
@@ -66,9 +98,34 @@ private:
 	// 실제 플레이어를 생성할 배열
 	CPlayer *pPlayerArray;
 
+	// 로그인 서버로부터 받은 키 자료구조
+	std::map<__int64, st_SESSION_KEY *> _sessionKeyMap;
+	SRWLOCK _sessionKeyMapLock;
+
+	// 하트비트용
+	__int64 _updateTick;
+
+	// 데이터베이스 메시지 풀
+	CMemoryPool<st_DBWRITER_MSG> _databaseMsgPool;
+
+	// 데이터베이스 메시지 큐
+	CLockFreeQueue<st_DBWRITER_MSG *> _databaseMsgQueue;
+
+	//모니터링 용도
+public:
+	long _iDatabaseWriteTPS;
+
+private:
+	long _iDatabaseWriteCounter;
+
 private:
 	// 모니터링 스레드
 	HANDLE						_hMonitorThread;
 	static unsigned __stdcall	MonitorThreadFunc(void *lpParam);
 	bool						MonitorThread_update(void);
+
+	// 데이터베이스 Write 스레드
+	HANDLE						_hDatabaseWriteThread;
+	static unsigned __stdcall	DatabaseWriteThread(void *lpParam);
+	bool						DatabaseWriteThread_update(void);
 };

@@ -272,11 +272,11 @@ bool CMMOServer::AuthThread_update(void)
 
 		pSession = this->_pSessionArray[iBlankIndex];
 
-		if (NULL == pSession)
+		/*if (NULL == pSession)
 		{
 			SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"not found session");
 			CCrashDump::Crash();
-		}
+		}*/
 
 		pSession->_iSessionMode = CSession::MODE_AUTH;
 		pSession->_clientID = MAKECLIENTID(iBlankIndex, _iClientID);
@@ -317,7 +317,9 @@ bool CMMOServer::AuthThread_update(void)
 				pSession->OnAuth_PacketProc();
 
 				if (true == pSession->_bLogout && FALSE == pSession->_iSending)
+				{
 					pSession->_iSessionMode = CSession::MODE_LOGOUT_IN_AUTH;
+				}
 			}
 		}
 		else
@@ -347,7 +349,7 @@ bool CMMOServer::AuthThread_update(void)
 		{
 			pSession = (this->_pSessionArray[i]);
 
-			if (CSession::MODE_LOGOUT_IN_AUTH == pSession->_iSessionMode && FALSE == pSession->_iSending)
+			if (CSession::MODE_LOGOUT_IN_AUTH == pSession->_iSessionMode)
 			{
 				pSession->_iSessionMode = CSession::MODE_WAIT_LOGOUT;
 				pSession->OnAuth_ClientLeave(false);
@@ -399,10 +401,11 @@ bool CMMOServer::WorkerThread_update(void)
 		}
 
 		// 하트비트
-		/*if (NULL == overlap & 1 == dwTransferedBytes && (CSession *)1 == pSession)
+		if (NULL == overlap & 1 == dwTransferedBytes && (CSession *)1 == pSession)
 		{
+
 			continue;
-		}*/
+		}
 
 		if (NULL != overlap)
 		{
@@ -575,8 +578,6 @@ bool CMMOServer::GameThread_update(void)
 	this->_iGameThLoopCounter++;
 	return true;
 }
-
-
 
 bool CMMOServer::CSession::SendPacket(CPacket *pSendPacket)
 {
@@ -763,6 +764,8 @@ void CMMOServer::CSession::SendPost(void)
 			{
 				this->_bLogout = true;
 			}
+
+			InterlockedExchange((long *)&this->_iSending, FALSE);
 		}
 	}
 

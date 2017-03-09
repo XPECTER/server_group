@@ -77,7 +77,7 @@ bool CLanClient::Connect(wchar_t *szClientBindIP, wchar_t *szServerIP, int iServ
 	{
 		// 처음엔 WSAEWOULDBLOCK이 뜨고 2번째는 이미 연결된 것이라고 뜬다.
 		err = WSAGetLastError();
-		if (WSAEISCONN != err && WSAEWOULDBLOCK != err)
+		if (WSAEISCONN != err && WSAEWOULDBLOCK != err && WSAEALREADY != err)
 		{
 			SYSLOG(L"SYSTEM", LOG::LEVEL_DEBUG, L"connect to server failed. ErrorNo : %d", err);
 			return false;

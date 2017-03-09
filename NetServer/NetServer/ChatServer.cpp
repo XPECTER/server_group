@@ -568,7 +568,6 @@ void CChatServer::AddSessionKey(__int64 accountNo, char *sessionKey)
 	{
 		st_SESSION_KEY_NODE *newNode = new st_SESSION_KEY_NODE;
 		newNode->_accountNo = accountNo;
-		//newNode->_sessionKey = sessionKey;
 		memcpy_s(newNode->_sessionKey, 64, sessionKey, 64);
 		newNode->_updateTick = time(NULL);
 		

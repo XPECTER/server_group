@@ -101,6 +101,7 @@ protected:
 
 	virtual void OnAuth_Update(void) = 0;
 	virtual void OnGame_Update(void) = 0;
+	virtual void OnHeartBeat(void) = 0;
 
 private:
 	bool Session_Init(void);
@@ -108,6 +109,10 @@ private:
 
 public:
 	bool _bStop;
+
+protected:
+	// 연결받을 클라이언트 최대 수치
+	int _iClientMax;
 
 private:
 	// 실행중인가
@@ -118,9 +123,6 @@ private:
 
 	// IOCP 핸들
 	HANDLE _hIOCP;
-
-	// 연결받을 클라이언트 최대 수치
-	int _iClientMax;
 
 	// 클라이언트에게 부여할 unique번호
 	unsigned __int64 _iClientID;

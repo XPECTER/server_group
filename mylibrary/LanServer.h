@@ -118,10 +118,10 @@ protected:
 	virtual void OnRecv(ClientID clientID, CPacket *pRecvPacket) = 0;		// 패킷 수신 완료 후
 	virtual void OnSend(ClientID clientID, int sendSize) = 0;				// 패킷 송신 완료 후
 
-	virtual void OnWorkerThreadBegin(void) = 0;									// 워커스레드 GQCS 바로 하단에서 호출
-	virtual void OnWorkerThreadEnd(void) = 0;									// 워커스레드 1루프 종료 후
+	//virtual void OnWorkerThreadBegin(void) = 0;									// 워커스레드 GQCS 바로 하단에서 호출
+	//virtual void OnWorkerThreadEnd(void) = 0;									// 워커스레드 1루프 종료 후
 
-	virtual void OnError(int _errorNo, ClientID clientID, WCHAR *_errstr) = 0;
+	//virtual void OnError(int _errorNo, ClientID clientID, WCHAR *_errstr) = 0;
 	
 private :
 	void Init_Session(int _iMaxUser);							// 세션 초기화

@@ -52,7 +52,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		wprintf_s(L"Packet Pool Chunk Size\t: %d\n", CPacket::PacketPool.GetAllocCount());
 		wprintf_s(L"Using Packet\t\t: %d\n", CPacket::PacketPool.GetUseCount());
 
-		Sleep(998);
+		Sleep(999);
 	}
 
 	timeEndPeriod(1);
@@ -172,6 +172,20 @@ bool LoadConfig(void)
 				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
 				return false;
 			}
+
+			wsprintf(szKey, L"AGENT_SERVER_IP");
+			if (!parser.GetValue(szKey, g_Config.szAgentServerIP, 16))
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
+				return false;
+			}
+
+			wsprintf(szKey, L"AGENT_SERVER_PORT");
+			if (!parser.GetValue(szKey, &g_Config.iAgentServerPort))
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
+				return false;
+			}
 		}
 
 		///////////////////////////////////////////////
@@ -261,6 +275,46 @@ bool LoadConfig(void)
 			LOG::bConsole = g_Config.bPrintConsole;
 			LOG::bFile = g_Config.bPrintFile;
 			LOG::bDatabase = g_Config.bPrintDatabase;
+		}
+
+		///////////////////////////////////////////////
+		// Database Block
+		///////////////////////////////////////////////
+		wsprintf(szKey, L"DATABASE");
+		if (!parser.MoveConfigBlock(szKey))
+		{
+			SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
+			return false;
+		}
+		else
+		{
+			wsprintf(szKey, L"LOG_LEVEL");
+			if (!parser.GetValue(szKey, &g_Config.iLogLevel))
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
+				return false;
+			}
+
+			wsprintf(szKey, L"PRINT_CONSOLE");
+			if (!parser.GetValue(szKey, &g_Config.bPrintConsole))
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
+				return false;
+			}
+
+			wsprintf(szKey, L"PRINT_FILE");
+			if (!parser.GetValue(szKey, &g_Config.bPrintFile))
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
+				return false;
+			}
+
+			wsprintf(szKey, L"PRINT_DATABASE");
+			if (!parser.GetValue(szKey, &g_Config.bPrintDatabase))
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
+				return false;
+			}
 		}
 	}
 

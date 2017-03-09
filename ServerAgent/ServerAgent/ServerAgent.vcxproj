@@ -145,6 +145,7 @@
     <ClInclude Include="..\..\mylibrary\APIHook.h" />
     <ClInclude Include="..\..\mylibrary\ConfigParser.h" />
     <ClInclude Include="..\..\mylibrary\CrashDump.h" />
+    <ClInclude Include="..\..\mylibrary\LanServer.h" />
     <ClInclude Include="..\..\mylibrary\LockFreeQueue.h" />
     <ClInclude Include="..\..\mylibrary\LockFreeStack.h" />
     <ClInclude Include="..\..\mylibrary\Log.h" />
@@ -171,6 +172,9 @@
     </ClCompile>
     <ClCompile Include="..\..\mylibrary\CrashDump.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\mylibrary\LanServer.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\..\mylibrary\LockFreeQueue.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>

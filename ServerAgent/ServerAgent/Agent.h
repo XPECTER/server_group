@@ -1,6 +1,6 @@
 #pragma once
 
-class CAgent
+class CAgent : public CLanServer
 {
 public:
 	CAgent();
@@ -15,6 +15,15 @@ public:
 	bool InitialPdh(void);
 	bool UpdatePdh(void);
 
+protected:
+	virtual bool OnConnectionRequest(wchar_t *szClientIP, int iPort) override;   // accept 직후 요청이 왔다는 것을 컨텐츠에게 알려주고 IP Table에서 접속 거부된 IP면 false. 아니면 true
+
+	virtual void OnClientJoin(ClientID clientID) override;						// 컨텐츠에게 유저가 접속했다는 것을 알려줌. WSARecv전에 호출
+	virtual void OnClientLeave(ClientID clientID) override;						// 컨텐츠에게 유저가 떠났다는 것을 알려줌. ClientRelease에서 상단 하단 상관없음.
+
+	virtual void OnRecv(ClientID clientID, CPacket *pRecvPacket) override;		// 패킷 수신 완료 후
+	virtual void OnSend(ClientID clientID, int sendSize) override;				// 패킷 송신 완료 후
+
 private:
 	void SendPacket_AvailableMemory();
 	void SendPacket_NonpagedMemory();
@@ -23,6 +32,7 @@ private:
 	void SendPacket_SentBytes();
 
 private:
+	
 	CMonitoringClient _lanClient_Monitoring;
 
 	CCpuUsage _usageGameServer;

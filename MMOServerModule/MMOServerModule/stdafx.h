@@ -18,6 +18,8 @@
 #include <process.h>
 #include <conio.h>
 
+#include <map>
+
 #include <my_global.h>
 #include <mysql.h>
 
@@ -41,3 +43,4 @@
 
 #include "Config.h"
 #include "CommonProtocol.h"
+#include "DBTypeEnum.h"

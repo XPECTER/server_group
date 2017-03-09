@@ -154,6 +154,32 @@ bool CAgent::UpdatePdh(void)
 	return true;
 }
 
+bool CAgent::OnConnectionRequest(wchar_t *szClientIP, int iPort)
+{
+	return true;
+}
+
+void CAgent::OnClientJoin(ClientID clientID)
+{
+
+}
+
+void CAgent::OnClientLeave(ClientID clientID)
+{
+
+}
+
+void CAgent::OnRecv(ClientID clientID, CPacket *pRecvPacket)
+{
+	
+}
+
+void CAgent::OnSend(ClientID clientID, int sendSize)
+{
+
+}
+
+
 bool CAgent::GameServer_Start()
 {
 	if (INVALID_HANDLE_VALUE != this->_hGameServer)

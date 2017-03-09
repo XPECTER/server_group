@@ -39,3 +39,5 @@
 #include "../../mylibrary/Log.h"
 #include "../../mylibrary/ConfigParser.h"
 #include "../../mylibrary/Profiler.h"
+
+#include "../../mylibrary/LanServer.h"

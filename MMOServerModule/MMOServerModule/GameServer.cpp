@@ -2,7 +2,17 @@
 #include "Config.h"
 #include "GameServer.h"
 
-void CGameServer::CPlayer::Player_Init(void)
+CGameServer::CPlayer::CPlayer()
+{
+	
+}
+
+CGameServer::CPlayer::~CPlayer()
+{
+
+}
+
+void CGameServer::CPlayer::Player_Init(CGameServer *pGameServer)
 {
 	this->_clientID = -1;
 	this->_connectInfo = NULL;
@@ -15,6 +25,17 @@ void CGameServer::CPlayer::Player_Init(void)
 	this->_IOCount = 0;
 	this->_iSending = FALSE;
 	this->_iSendCount = 0;
+
+	this->_heartBeatTick = time(NULL);
+	this->_pGameServer = pGameServer;
+}
+
+void CGameServer::CPlayer::CheckHeartBeat(void)
+{
+	if (time(NULL) - this->_heartBeatTick > dfCLIENT_HEARTBEAT_TICK)
+		this->Disconnect();
+
+	return;
 }
 
 bool CGameServer::CPlayer::OnAuth_ClientJoin(void)
@@ -36,17 +57,23 @@ bool CGameServer::CPlayer::OnAuth_PacketProc(void)
 
 			switch (type)
 			{
-			case en_PACKET_CS_GAME_REQ_LOGIN:
-			{
-				PacketProc_Login(pRecvPacket);
-				break;
-			}
+				case en_PACKET_CS_GAME_REQ_LOGIN:
+				{
+					PacketProc_Login(pRecvPacket);
+					break;
+				}
 
-			default:
-			{
-				SYSLOG(L"SYSTEM", LOG::LEVEL_DEBUG, L"Wrong type packet");
-				CCrashDump::Crash();
-			}
+				case en_PACKET_CS_GAME_REQ_CHARACTER_SELECT:
+				{
+					PacketProc_CharacterSelect(pRecvPacket);
+					break;
+				}
+
+				default:
+				{
+					SYSLOG(L"SYSTEM", LOG::LEVEL_DEBUG, L"Wrong type packet");
+					CCrashDump::Crash();
+				}
 			}
 
 			pRecvPacket->Free();
@@ -89,6 +116,12 @@ bool CGameServer::CPlayer::OnGame_PacketProc(void)
 					break;
 				}
 
+				case en_PACKET_CS_GAME_REQ_HEARTBEAT:
+				{
+					PacketProc_ClientHeartBeat(pRecvPacket);
+					break;
+				}
+
 				default:
 				{
 					SYSLOG(L"SYSTEM", LOG::LEVEL_DEBUG, L"Wrong type packet");
@@ -107,6 +140,15 @@ bool CGameServer::CPlayer::OnGame_PacketProc(void)
 
 bool CGameServer::CPlayer::OnGame_ClientLeave(void)
 {
+	st_DBWRITER_MSG *pMsg = this->_pGameServer->_databaseMsgPool.Alloc();
+	pMsg->Type_DB = dfDBWRITER_TYPE_ACCOUNT;
+	pMsg->Type_Message = enDB_ACCOUNT_WRITE_STATUS_LOGOUT;
+
+	stDB_ACCOUNT_WRITE_STATUS_LOGOUT_in data;
+	data.AccountNo = this->_accountNo;
+	memcpy_s(pMsg->Message, dfDBWRITER_MSG_MAX, &data, sizeof(stDB_ACCOUNT_WRITE_STATUS_LOGOUT_in));
+
+	this->_pGameServer->_databaseMsgQueue.Enqueue(pMsg);
 	return true;
 }
 
@@ -146,23 +188,81 @@ void  CGameServer::CPlayer::PacketProc_Login(CPacket *pRecvPacket)
 
 	// 1. 세션 키 검사 후 없다면 로그인 실패 바로 전송
 	// 2. DB에서 accountNo로 검색 후 로그인 성공 여부 전송
-
+	this->_heartBeatTick = time(NULL);
+	
 	CPacket *pSendPacket = CPacket::Alloc();
-	MakePacket_ResLogin(1, iAccountNo, pSendPacket);
+	if (dfDUMMY_ACCOUNTNO_LIMIT < iAccountNo)
+	{
+		if (!this->_pGameServer->CheckSessionKey(iAccountNo, SessionKey))
+		{
+			MakePacket_ResLogin(pSendPacket, 0, iAccountNo);
+			SendPacket(pSendPacket);
+			pSendPacket->Free();
+
+			return;
+		}
+	}
+
+	// DB검색
+	this->_byParty = 1;
+	MakePacket_ResLogin(pSendPacket, 1, iAccountNo);
 	SendPacket(pSendPacket);
 	pSendPacket->Free();
 
-	SetMode_Game();
+	//SetMode_Game();
 	return;
 }
 
-void CGameServer::CPlayer::MakePacket_ResLogin(BYTE iStatus, __int64 iAccountNo, CPacket *pSendPacket)
+void CGameServer::CPlayer::MakePacket_ResLogin(CPacket *pSendPacket, BYTE byStatus, __int64 iAccountNo)
 {
 	*pSendPacket << (WORD)en_PACKET_CS_GAME_RES_LOGIN;
-	*pSendPacket << iStatus;
+	*pSendPacket << byStatus;
 	*pSendPacket << iAccountNo;
 
 	return;
+}
+
+void CGameServer::CPlayer::PacketProc_CharacterSelect(CPacket *pRecvPacket)
+{
+	BYTE characterType;
+	BYTE byResult;
+
+	*pRecvPacket >> characterType;
+
+	this->_heartBeatTick = time(NULL);
+	byResult = 0;
+	
+	if (1 == this->_byParty)
+	{
+		if (1 <= characterType && 3 >= characterType)
+			byResult = 1;
+	}
+	else if (2 == this->_byParty)
+	{
+		if (3 <= characterType && 5 >= characterType)
+			byResult = 1;
+	}
+	else
+	{
+		SYSLOG(L"PACKET", LOG::LEVEL_DEBUG, L"unknown party num");
+		CCrashDump::Crash();
+	}
+
+	CPacket *pSendPacket = CPacket::Alloc();
+	MakePacket_ResCharacterSelect(pSendPacket, byResult);
+	SendPacket(pSendPacket);
+	pSendPacket->Free();
+
+	if (1 == byResult)
+		SetMode_Game();
+
+	return;
+}
+
+void CGameServer::CPlayer::MakePacket_ResCharacterSelect(CPacket *pSendPacket, BYTE byStatus)
+{
+	*pSendPacket << (WORD)en_PACKET_CS_GAME_RES_CHARACTER_SELECT;
+	*pSendPacket << byStatus;
 }
 
 void CGameServer::CPlayer::PacketProc_ReqEcho(CPacket *pRecvPacket)
@@ -170,18 +270,20 @@ void CGameServer::CPlayer::PacketProc_ReqEcho(CPacket *pRecvPacket)
 	__int64 iAccountNo;
 	__int64 SendTick;
 
+	this->_heartBeatTick = time(NULL);
+
 	*pRecvPacket >> iAccountNo;
 	*pRecvPacket >> SendTick;
 
 	CPacket *pSendPacket = CPacket::Alloc();
-	MakePacket_ResEcho(iAccountNo, SendTick, pSendPacket);
+	MakePacket_ResEcho(pSendPacket, iAccountNo, SendTick);
 	SendPacket(pSendPacket);
 	pSendPacket->Free();
 
 	return;
 }
 
-void CGameServer::CPlayer::MakePacket_ResEcho(__int64 iAccountNo, __int64 SendTick, CPacket *pSendPacket)
+void CGameServer::CPlayer::MakePacket_ResEcho(CPacket *pSendPacket, __int64 iAccountNo, __int64 SendTick)
 {
 	*pSendPacket << (WORD)en_PACKET_CS_GAME_RES_ECHO;
 	*pSendPacket << iAccountNo;
@@ -190,25 +292,62 @@ void CGameServer::CPlayer::MakePacket_ResEcho(__int64 iAccountNo, __int64 SendTi
 	return;
 }
 
+void CGameServer::CPlayer::PacketProc_ClientHeartBeat(CPacket *pRecvPacket)
+{
+	this->_heartBeatTick = time(NULL);
+	return;
+}
+
+
+
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+
 CGameServer::CGameServer(int iClientMax) : CMMOServer(iClientMax)
 {
+	InitializeSRWLock(&this->_sessionKeyMapLock);
+
+	// LanClient
 	this->_lanClient_Monitoring = new CLanClient_Monitoring(this);
 	this->_lanClient_Login = new CLanClient_Login(this);
+	//this->_lanClient_Agent = new CLanClient_Agent(this);
 
+	// GameTh 하트비트 용도
+	this->_updateTick = time(NULL);
+
+	// 모니터링 변수
+	this->_iDatabaseWriteTPS = 0;
+	this->_iDatabaseWriteCounter = 0;
+
+#pragma region player
+	// 플레이어 배열 할당
 	this->pPlayerArray = new CPlayer[iClientMax];
 
 	for (int i = 0; i < iClientMax; ++i)
 	{
-		this->pPlayerArray[i].Player_Init();
+		this->pPlayerArray[i].Player_Init(this);
 		this->SetSessionArray(i, (void *)&this->pPlayerArray[i]);
 	}
+#pragma endregion player
 
+#pragma region createthread
 	_hMonitorThread = (HANDLE)_beginthreadex(NULL, 0, MonitorThreadFunc, this, NULL, NULL);
 	if (NULL == _hMonitorThread)
 	{
 		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Create MonitoringTh failed");
 		CCrashDump::Crash();
 	}
+
+	_hDatabaseWriteThread = (HANDLE)_beginthreadex(NULL, 0, DatabaseWriteThread, this, NULL, NULL);
+	if (NULL == _hDatabaseWriteThread)
+	{
+		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Create DBWriteTh failed");
+		CCrashDump::Crash();
+	}
+#pragma endregion createthread
 }
 
 CGameServer::~CGameServer()
@@ -220,20 +359,125 @@ bool CGameServer::Start(void)
 {
 	CMMOServer::Start(g_Config.szNetBindIP, g_Config.iNetBindPort, g_Config.bNetNagleOpt, g_Config.iNetThreadNum);
 	this->_lanClient_Monitoring->Connect(NULL, g_Config.szMonitoringServerIP, g_Config.iMonitoringServerPort, 2, false);
-	
+	this->_lanClient_Login->Connect(NULL, g_Config.szLoginServerIP, g_Config.iLoginServerPort, 2, false);
+	this->_lanClient_Agent->Connect(NULL, g_Config.szAgentServerIP, g_Config.iAgentServerPort, 2, false);
 	
 	return true;
 }
 
+void CGameServer::Stop(void)
+{
+	CMMOServer::Stop();
+	this->_lanClient_Login->Disconnect();
+	this->_lanClient_Monitoring->Disconnect();
+	this->_lanClient_Agent->Disconnect();
+
+	return;
+}
+
 void CGameServer::OnAuth_Update(void)
 {
+	Schedule_SessionKey();
+	Schedule_Client();
 	return;
 }
 
 void CGameServer::OnGame_Update(void)
 {
+	if (time(NULL) - this->_updateTick > dfGAMETHREAD_HEARTBEAT_TICK)
+		this->_lanClient_Login->SendPacket_HeartBeat(dfTHREAD_TYPE_GAME);
 	return;
 }
+
+void CGameServer::OnHeartBeat(void)
+{
+	this->_lanClient_Login->SendPacket_HeartBeat(dfTHREAD_TYPE_WORKER);
+}
+
+void CGameServer::AddSessionKey(__int64 accountNo, char *sessionKey)
+{
+	AcquireSRWLockExclusive(&this->_sessionKeyMapLock);
+
+	auto iter = this->_sessionKeyMap.find(accountNo);
+	if (iter == this->_sessionKeyMap.end())
+	{
+		st_SESSION_KEY *newNode = new st_SESSION_KEY;
+		memcpy_s(newNode->_sessionKey, dfSESSION_KEY_LEN, sessionKey, dfSESSION_KEY_LEN);
+		newNode->_timeoutTick = time(NULL);
+
+		this->_sessionKeyMap.insert(std::pair<__int64, st_SESSION_KEY *>(accountNo, newNode));
+	}
+	else
+	{
+		memcpy_s(iter->second->_sessionKey, dfSESSION_KEY_LEN, sessionKey, dfSESSION_KEY_LEN);
+		iter->second->_timeoutTick = time(NULL);
+	}
+	
+	ReleaseSRWLockExclusive(&this->_sessionKeyMapLock);
+	return;
+}
+
+bool CGameServer::CheckSessionKey(__int64 accountNo, char *sessionKey)
+{
+	bool bResult = false;
+
+	AcquireSRWLockExclusive(&this->_sessionKeyMapLock);
+	auto iter = this->_sessionKeyMap.find(accountNo);
+
+	if (iter != this->_sessionKeyMap.end())
+	{
+		if (0 == memcmp(sessionKey, iter->second->_sessionKey, dfSESSION_KEY_LEN))
+		{
+			this->_sessionKeyMap.erase(iter);
+			bResult = true;
+		}
+	}
+
+	ReleaseSRWLockExclusive(&this->_sessionKeyMapLock);
+	return bResult;
+}
+
+void CGameServer::Schedule_SessionKey(void)
+{
+	int deleteCount = 0;
+
+	AcquireSRWLockExclusive(&this->_sessionKeyMapLock);
+
+	for (auto iter = this->_sessionKeyMap.begin(); iter != this->_sessionKeyMap.end();)
+	{
+		if (dfSESSION_KEY_TIMEOUT_TICK < (time(NULL) - (iter->second->_timeoutTick)))
+		{
+			delete iter->second;
+			this->_sessionKeyMap.erase(iter++);
+
+			if (50 < (++deleteCount))
+				break;
+		}
+		else
+		{
+			++iter;
+		}
+	}
+
+	ReleaseSRWLockExclusive(&this->_sessionKeyMapLock);
+	return;
+}
+
+void CGameServer::Schedule_Client(void)
+{
+	CPlayer *pPlayer = NULL;
+
+	for (int i = 0; i < _iClientMax; ++i)
+	{
+		pPlayer = &pPlayerArray[i];
+
+		if (CSession::MODE_AUTH == pPlayer->_iSessionMode || CSession::MODE_GAME == pPlayer->_iSessionMode)
+			pPlayer->CheckHeartBeat();
+	}
+
+	return;
+}
+
 
 unsigned __stdcall CGameServer::MonitorThreadFunc(void *lpParam)
 {
@@ -245,32 +489,34 @@ bool CGameServer::MonitorThread_update(void)
 {
 	while (!_bStop)
 	{
-		_iAcceptTPS = _iAcceptCounter;
-		_iSendPacketTPS = _iSendPacketCounter;
-		_iRecvPacketTPS = _iRecvPacketCounter;
-		_iAuthThLoopTPS = _iAuthThLoopCounter;
-		_iGameThLoopTPS = _iGameThLoopCounter;
+		this->_iAcceptTPS			= this->_iAcceptCounter;
+		this->_iSendPacketTPS		= this->_iSendPacketCounter;
+		this->_iRecvPacketTPS		= this->_iRecvPacketCounter;
+		this->_iAuthThLoopTPS		= this->_iAuthThLoopCounter;
+		this->_iGameThLoopTPS		= this->_iGameThLoopCounter;
+		this->_iDatabaseWriteTPS	= this->_iDatabaseWriteCounter;
 
 		if (_lanClient_Monitoring->_bConnected)
 		{
-			this->SendPacket_SessionCount();
-			this->SendPacket_AuthPlayer();
-			this->SendPacket_GamePlayer();
-			this->SendPacket_AcceptTPS();
-			this->SendPacket_RecvPacketTPS();
-			this->SendPacket_SendPacketTPS();
-			//this->SendPacket_DatabaseWriteTPS();
-			//this->SendPacket_DatabaseMsgCount();
-			this->SendPacket_AuthThreadTPS();
-			this->SendPacket_GameThreadTPS();
-			this->SendPacket_PacketUseCount();
+			_lanClient_Monitoring->SendPacket_SessionCount(this->_iTotalSessionCounter);
+			_lanClient_Monitoring->SendPacket_AuthPlayer(this->_iAuthThSessionCounter);
+			_lanClient_Monitoring->SendPacket_GamePlayer(this->_iGameThSessionCounter);
+			_lanClient_Monitoring->SendPacket_AcceptTPS(this->_iAcceptTPS);
+			_lanClient_Monitoring->SendPacket_RecvPacketTPS(this->_iRecvPacketTPS);
+			_lanClient_Monitoring->SendPacket_SendPacketTPS(this->_iSendPacketTPS);
+			_lanClient_Monitoring->SendPacket_DatabaseWriteTPS(this->_iDatabaseWriteTPS);
+			_lanClient_Monitoring->SendPacket_DatabaseMsgCount(this->_databaseMsgQueue.GetUseSize());
+			_lanClient_Monitoring->SendPacket_AuthThreadTPS(this->_iAuthThLoopTPS);
+			_lanClient_Monitoring->SendPacket_GameThreadTPS(this->_iGameThLoopTPS);
+			_lanClient_Monitoring->SendPacket_PacketUseCount(CPacket::PacketPool.GetUseCount());
 		}
 
-		_iAcceptCounter = 0;
-		_iSendPacketCounter = 0;
-		_iRecvPacketCounter = 0;
-		_iAuthThLoopCounter = 0;
-		_iGameThLoopCounter = 0;
+		this->_iAcceptCounter			= 0;
+		this->_iSendPacketCounter		= 0;
+		this->_iRecvPacketCounter		= 0;
+		this->_iAuthThLoopCounter		= 0;
+		this->_iGameThLoopCounter		= 0;
+		this->_iDatabaseWriteCounter	= 0;
 
 		Sleep(dfTHREAD_UPDATE_TICK_MONITOR);
 	}
@@ -278,211 +524,56 @@ bool CGameServer::MonitorThread_update(void)
 	return true;
 }
 
-void CGameServer::SendPacket_SessionCount(void)
+unsigned __stdcall CGameServer::DatabaseWriteThread(void *lpParam)
 {
-	CPacket *pSendPacket = CPacket::Alloc();
-	pSendPacket->SetHeaderSize(2);
-
-	*pSendPacket << (WORD)en_PACKET_SS_MONITOR_DATA_UPDATE;
-	*pSendPacket << (BYTE)dfMONITOR_DATA_TYPE_GAME_SESSION;
-	*pSendPacket << (int)this->_iTotalSessionCounter;
-	*pSendPacket << (int)(time(NULL));
-
-	HEADER header;
-	header.wSize = pSendPacket->GetPayloadUseSize();
-	pSendPacket->InputHeader((char *)&header, sizeof(header));
-
-	this->_lanClient_Monitoring->SendPacket(pSendPacket);
-	pSendPacket->Free();
-	return;
+	CGameServer *pServer = (CGameServer *)lpParam;
+	return pServer->MonitorThread_update();
 }
 
-void CGameServer::SendPacket_AuthPlayer(void)
+bool CGameServer::DatabaseWriteThread_update(void)
 {
-	CPacket *pSendPacket = CPacket::Alloc();
-	pSendPacket->SetHeaderSize(2);
+	time_t dbHeartbeatTick = time(NULL);
+	time_t cmpTick = 0;
+	st_DBWRITER_MSG *pMsg = NULL;
 
-	*pSendPacket << (WORD)en_PACKET_SS_MONITOR_DATA_UPDATE;
-	*pSendPacket << (BYTE)dfMONITOR_DATA_TYPE_GAME_AUTH_PLAYER;
-	*pSendPacket << (int)this->_iAuthThSessionCounter;
-	*pSendPacket << (int)(time(NULL));
+	while (!_bStop)
+	{
+		if (this->_databaseMsgQueue.Dequeue(&pMsg))
+		{
+			switch (pMsg->Type_DB)
+			{
+				case dfDBWRITER_TYPE_ACCOUNT:
+				{
+					break;
+				}
 
-	HEADER header;
-	header.wSize = pSendPacket->GetPayloadUseSize();
-	pSendPacket->InputHeader((char *)&header, sizeof(header));
+				case dfDBWRITER_TYPE_GAME:
+				{
+					break;
+				}
 
-	this->_lanClient_Monitoring->SendPacket(pSendPacket);
-	pSendPacket->Free();
-	return;
-}
+				case dfDBWRITER_TYPE_HEARTBEAT:
+				{
+					this->_lanClient_Login->SendPacket_HeartBeat(dfTHREAD_TYPE_DB);
+					break;
+				}
 
-void CGameServer::SendPacket_GamePlayer(void)
-{
-	CPacket *pSendPacket = CPacket::Alloc();
-	pSendPacket->SetHeaderSize(2);
+				default:
+				{
+					SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Wrong MsgType");
+				}
+			}
 
-	*pSendPacket << (WORD)en_PACKET_SS_MONITOR_DATA_UPDATE;
-	*pSendPacket << (BYTE)dfMONITOR_DATA_TYPE_GAME_GAME_PLAYER;
-	*pSendPacket << (int)this->_iGameThSessionCounter;
-	*pSendPacket << (int)(time(NULL));
+			cmpTick = time(NULL);
+			if (cmpTick - dbHeartbeatTick >= dfDATABASETHREAD_HEARTBEAT_TICK)
+			{
+				this->_lanClient_Login->SendPacket_HeartBeat(dfTHREAD_TYPE_DB);
+				dbHeartbeatTick = cmpTick;
+			}
+		}
+		else
+			Sleep(dfTHREAD_UPDATE_TICK_DATABASE);
+	}
 
-	HEADER header;
-	header.wSize = pSendPacket->GetPayloadUseSize();
-	pSendPacket->InputHeader((char *)&header, sizeof(header));
-
-	this->_lanClient_Monitoring->SendPacket(pSendPacket);
-	pSendPacket->Free();
-	return;
-}
-
-void CGameServer::SendPacket_AcceptTPS(void)
-{
-	CPacket *pSendPacket = CPacket::Alloc();
-	pSendPacket->SetHeaderSize(2);
-
-	*pSendPacket << (WORD)en_PACKET_SS_MONITOR_DATA_UPDATE;
-	*pSendPacket << (BYTE)dfMONITOR_DATA_TYPE_GAME_ACCEPT_TPS;
-	*pSendPacket << (int)this->_iAcceptTPS;
-	*pSendPacket << (int)(time(NULL));
-
-	HEADER header;
-	header.wSize = pSendPacket->GetPayloadUseSize();
-	pSendPacket->InputHeader((char *)&header, sizeof(header));
-
-	this->_lanClient_Monitoring->SendPacket(pSendPacket);
-	pSendPacket->Free();
-	return;
-}
-
-void CGameServer::SendPacket_RecvPacketTPS(void)
-{
-	CPacket *pSendPacket = CPacket::Alloc();
-	pSendPacket->SetHeaderSize(2);
-
-	*pSendPacket << (WORD)en_PACKET_SS_MONITOR_DATA_UPDATE;
-	*pSendPacket << (BYTE)dfMONITOR_DATA_TYPE_GAME_PACKET_PROC_TPS;
-	*pSendPacket << (int)this->_iRecvPacketTPS;
-	*pSendPacket << (int)(time(NULL));
-
-	HEADER header;
-	header.wSize = pSendPacket->GetPayloadUseSize();
-	pSendPacket->InputHeader((char *)&header, sizeof(header));
-
-	this->_lanClient_Monitoring->SendPacket(pSendPacket);
-	pSendPacket->Free();
-	return;
-}
-
-void CGameServer::SendPacket_SendPacketTPS(void)
-{
-	CPacket *pSendPacket = CPacket::Alloc();
-	pSendPacket->SetHeaderSize(2);
-
-	*pSendPacket << (WORD)en_PACKET_SS_MONITOR_DATA_UPDATE;
-	*pSendPacket << (BYTE)dfMONITOR_DATA_TYPE_GAME_PACKET_SEND_TPS;
-	*pSendPacket << (int)this->_iSendPacketTPS;
-	*pSendPacket << (int)(time(NULL));
-
-	HEADER header;
-	header.wSize = pSendPacket->GetPayloadUseSize();
-	pSendPacket->InputHeader((char *)&header, sizeof(header));
-
-	this->_lanClient_Monitoring->SendPacket(pSendPacket);
-	pSendPacket->Free();
-	return;
-}
-
-void CGameServer::SendPacket_DatabaseWriteTPS(void)
-{
-	CPacket *pSendPacket = CPacket::Alloc();
-	pSendPacket->SetHeaderSize(2);
-
-	*pSendPacket << (WORD)en_PACKET_SS_MONITOR_DATA_UPDATE;
-	*pSendPacket << (BYTE)dfMONITOR_DATA_TYPE_GAME_DB_WRITE_TPS;
-	//*pSendPacket << (int)this->;
-	*pSendPacket << (int)(time(NULL));
-
-	HEADER header;
-	header.wSize = pSendPacket->GetPayloadUseSize();
-	pSendPacket->InputHeader((char *)&header, sizeof(header));
-
-	this->_lanClient_Monitoring->SendPacket(pSendPacket);
-	pSendPacket->Free();
-	return;
-}
-
-void CGameServer::SendPacket_DatabaseMsgCount(void)
-{
-	CPacket *pSendPacket = CPacket::Alloc();
-	pSendPacket->SetHeaderSize(2);
-
-	*pSendPacket << (WORD)en_PACKET_SS_MONITOR_DATA_UPDATE;
-	*pSendPacket << (BYTE)dfMONITOR_DATA_TYPE_GAME_DB_WRITE_MSG;
-	//*pSendPacket << (int)this->;
-	*pSendPacket << (int)(time(NULL));
-
-	HEADER header;
-	header.wSize = pSendPacket->GetPayloadUseSize();
-	pSendPacket->InputHeader((char *)&header, sizeof(header));
-
-	this->_lanClient_Monitoring->SendPacket(pSendPacket);
-	pSendPacket->Free();
-	return;
-}
-
-void CGameServer::SendPacket_AuthThreadTPS(void)
-{
-	CPacket *pSendPacket = CPacket::Alloc();
-	pSendPacket->SetHeaderSize(2);
-
-	*pSendPacket << (WORD)en_PACKET_SS_MONITOR_DATA_UPDATE;
-	*pSendPacket << (BYTE)dfMONITOR_DATA_TYPE_GAME_AUTH_THREAD_FPS;
-	*pSendPacket << (int)this->_iAuthThLoopTPS;
-	*pSendPacket << (int)(time(NULL));
-
-	HEADER header;
-	header.wSize = pSendPacket->GetPayloadUseSize();
-	pSendPacket->InputHeader((char *)&header, sizeof(header));
-
-	this->_lanClient_Monitoring->SendPacket(pSendPacket);
-	pSendPacket->Free();
-	return;
-}
-
-void CGameServer::SendPacket_GameThreadTPS(void)
-{
-	CPacket *pSendPacket = CPacket::Alloc();
-	pSendPacket->SetHeaderSize(2);
-
-	*pSendPacket << (WORD)en_PACKET_SS_MONITOR_DATA_UPDATE;
-	*pSendPacket << (BYTE)dfMONITOR_DATA_TYPE_GAME_GAME_THREAD_FPS;
-	*pSendPacket << (int)this->_iGameThLoopTPS;
-	*pSendPacket << (int)(time(NULL));
-
-	HEADER header;
-	header.wSize = pSendPacket->GetPayloadUseSize();
-	pSendPacket->InputHeader((char *)&header, sizeof(header));
-
-	this->_lanClient_Monitoring->SendPacket(pSendPacket);
-	pSendPacket->Free();
-	return;
-}
-
-void CGameServer::SendPacket_PacketUseCount(void)
-{
-	CPacket *pSendPacket = CPacket::Alloc();
-	pSendPacket->SetHeaderSize(2);
-
-	*pSendPacket << (WORD)en_PACKET_SS_MONITOR_DATA_UPDATE;
-	*pSendPacket << (BYTE)dfMONITOR_DATA_TYPE_GAME_PACKET_POOL;
-	*pSendPacket << (int)CPacket::PacketPool.GetUseCount();
-	*pSendPacket << (int)(time(NULL));
-
-	HEADER header;
-	header.wSize = pSendPacket->GetPayloadUseSize();
-	pSendPacket->InputHeader((char *)&header, sizeof(header));
-
-	this->_lanClient_Monitoring->SendPacket(pSendPacket);
-	pSendPacket->Free();
-	return;
+	return true;
 }

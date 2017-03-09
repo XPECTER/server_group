@@ -273,7 +273,7 @@ unsigned _stdcall CLanServer::AcceptThreadFunc(void *lpParam)
 		if (-1 == index)
 		{
 			// 배열이 다 차서 다른 무언가를 해줘야함.
-			pServer->OnError(GetLastError(), -1, L"Session Array is full");
+			SYSLOG(L"SYSTEM", LOG::LEVEL_DEBUG, L"Session Array is full");
 
 			// 밑에 로직 추가
 			closesocket(clientSock);
@@ -349,7 +349,7 @@ unsigned _stdcall CLanServer::WorkerThreadFunc(void *lpParam)
 			else
 			{
 				// IOCP에러.
-				pServer->OnError(0, 0, L"Worker thread IOCP Error");
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Worker thread IOCP Error");
 				return -1;
 			}
 		}
@@ -358,7 +358,7 @@ unsigned _stdcall CLanServer::WorkerThreadFunc(void *lpParam)
 			pSession = &pServer->aSession[index];
 
 			if (index != EXTRACTINDEX(pSession->ClientId))
-				pServer->OnError(0, pSession->ClientId, L"Index Mismatch");
+				SYSLOG(L"SYSTEM", LOG::LEVEL_DEBUG, L"Index Mismatch");
 
 			if (tempOv == &pSession->RecvOverlap && TRUE == _bResult)
 			{
@@ -384,16 +384,10 @@ unsigned _stdcall CLanServer::WorkerThreadFunc(void *lpParam)
 			{
 				pServer->OnSend(pSession->ClientId, transferredBytes);
 
-				if (transferredBytes != (pSession->_sendCount * 10))
-					pServer->OnError(0, pSession->ClientId, L"SendCount break");
-
 				for (int i = 0; i < pSession->_sendCount; ++i)
 				{
 					iResult = pSession->SendQ.Dequeue(&buff);
 
-					if (-1 == iResult)
-						pServer->OnError(0, pSession->ClientId, L"SendQ Deqeueue Error in WorkerThread");
-					
 					buff->Free();
 					// 여기서 buff의 refCount가 0이 아닐 수도 있다. 
 					// SendPost후 바로 통지가 오고 free를 하면 refCount는 1이고
@@ -474,7 +468,7 @@ void CLanServer::SendPost(SESSION *pSession)
 				if (WSA_IO_PENDING != iError)
 				{
 					if (WSAENOBUFS == iError)
-						OnError(iError, pSession->ClientId, L"WSASend NoBuff.");
+						SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"WSASend NoBuff");
 
 					//OnError(iError, errstr_SOCKET_WSASEND);
 					ClientDisconnect(pSession->ClientId);
@@ -699,11 +693,6 @@ void CLanServer::ClientRelease(SESSION *pSession)
 		}
 		else
 			break;
-	}
-
-	if (0 < pSession->SendQ.GetUseSize())
-	{
-		OnError(0, pSession->ClientId, L"Data remain in SendQ");
 	}
 
 	closesocket(pSession->ClientSock);

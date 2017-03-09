@@ -6,6 +6,7 @@ public:
 	CDBConnector();
 	virtual ~CDBConnector();
 
+	bool Connect(wchar_t *szDBIP, wchar_t *szUser, wchar_t *szPassword, wchar_t *szDBName, int iDBPort);
 private:
 	MYSQL auth_accountdb;
 	MYSQL auth_gamedb;
@@ -18,4 +19,5 @@ private:
 	MYSQL db_accountdb;
 	MYSQL db_gamedb;
 	MYSQL db_logdb;
+
 };

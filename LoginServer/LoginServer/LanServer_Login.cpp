@@ -89,20 +89,20 @@ void CLanServer_Login::OnSend(ClientID clientID, int sendSize)
 	return;
 }
 
-void CLanServer_Login::OnWorkerThreadBegin(void)
-{
-	return;
-}
-
-void CLanServer_Login::OnWorkerThreadEnd(void)
-{
-	return;
-}
-
-void CLanServer_Login::OnError(int errorNo, ClientID clientID, wchar_t *errstr)
-{
-	return;
-}
+//void CLanServer_Login::OnWorkerThreadBegin(void)
+//{
+//	return;
+//}
+//
+//void CLanServer_Login::OnWorkerThreadEnd(void)
+//{
+//	return;
+//}
+//
+//void CLanServer_Login::OnError(int errorNo, ClientID clientID, wchar_t *errstr)
+//{
+//	return;
+//}
 
 CLanServer_Login::st_SERVER_SESSION* CLanServer_Login::FindSession(CLIENT_ID clientID)
 {
