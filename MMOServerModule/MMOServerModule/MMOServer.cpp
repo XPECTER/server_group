@@ -401,7 +401,7 @@ bool CMMOServer::WorkerThread_update(void)
 		}
 
 		// 하트비트
-		if (NULL == overlap & 1 == dwTransferedBytes && (CSession *)1 == pSession)
+		if (NULL == overlap && 1 == dwTransferedBytes && (CSession *)1 == pSession)
 		{
 
 			continue;

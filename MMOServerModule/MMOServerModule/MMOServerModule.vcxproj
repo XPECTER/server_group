@@ -77,8 +77,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\Users\XPEC\Documents\server_group\mylibrary\mysql\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Users\XPEC\Documents\server_group\mylibrary\mysql\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\Users\USER\Documents\server_group\mylibrary\mysql\include;C:\Users\XPEC\Documents\server_group\mylibrary\mysql\include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Users\USER\Documents\server_group\mylibrary\mysql\lib;C:\Users\XPEC\Documents\server_group\mylibrary\mysql\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

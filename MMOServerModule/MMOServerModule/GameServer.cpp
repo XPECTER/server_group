@@ -209,7 +209,7 @@ void  CGameServer::CPlayer::PacketProc_Login(CPacket *pRecvPacket)
 	SendPacket(pSendPacket);
 	pSendPacket->Free();
 
-	//SetMode_Game();
+	SetMode_Game();
 	return;
 }
 
@@ -313,7 +313,7 @@ CGameServer::CGameServer(int iClientMax) : CMMOServer(iClientMax)
 	// LanClient
 	this->_lanClient_Monitoring = new CLanClient_Monitoring(this);
 	this->_lanClient_Login = new CLanClient_Login(this);
-	//this->_lanClient_Agent = new CLanClient_Agent(this);
+	this->_lanClient_Agent = new CLanClient_Agent(this);
 
 	// GameTh 하트비트 용도
 	this->_updateTick = time(NULL);
@@ -360,7 +360,7 @@ bool CGameServer::Start(void)
 	CMMOServer::Start(g_Config.szNetBindIP, g_Config.iNetBindPort, g_Config.bNetNagleOpt, g_Config.iNetThreadNum);
 	this->_lanClient_Monitoring->Connect(NULL, g_Config.szMonitoringServerIP, g_Config.iMonitoringServerPort, 2, false);
 	this->_lanClient_Login->Connect(NULL, g_Config.szLoginServerIP, g_Config.iLoginServerPort, 2, false);
-	this->_lanClient_Agent->Connect(NULL, g_Config.szAgentServerIP, g_Config.iAgentServerPort, 2, false);
+	//this->_lanClient_Agent->Connect(NULL, g_Config.szAgentServerIP, g_Config.iAgentServerPort, 2, false);
 	
 	return true;
 }
@@ -482,6 +482,13 @@ void CGameServer::Schedule_Client(void)
 unsigned __stdcall CGameServer::MonitorThreadFunc(void *lpParam)
 {
 	CGameServer *pServer = (CGameServer *)lpParam;
+
+	/*while (!pServer->_bStop)
+	{
+		pServer->MonitorThread_update();
+		Sleep(dfTHREAD_UPDATE_TICK_MONITOR);
+	}*/
+
 	return pServer->MonitorThread_update();
 }
 
@@ -527,7 +534,7 @@ bool CGameServer::MonitorThread_update(void)
 unsigned __stdcall CGameServer::DatabaseWriteThread(void *lpParam)
 {
 	CGameServer *pServer = (CGameServer *)lpParam;
-	return pServer->MonitorThread_update();
+	return 0; /*pServer->MonitorThread_update();*/
 }
 
 bool CGameServer::DatabaseWriteThread_update(void)

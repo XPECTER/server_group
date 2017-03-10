@@ -16,7 +16,12 @@ int _tmain(int argc, _TCHAR* argv[])
 {
 	timeBeginPeriod(1);
 
-	LoadConfig();
+	unsigned __int64 iLoop = 0;
+
+	if (!LoadConfig())
+	{
+		return 0;
+	}
 	
 	// 콘솔창 크기
 	system("mode con: lines=18 cols=80");
@@ -34,7 +39,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		g_pGameServer->Start();
 		KeyProcess();
 
-		wprintf_s(L"SERVER ON TIME : [%04d-%02d-%02d %02d:%02d:%02d]\n", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
+		wprintf_s(L"SERVER ON TIME : [%04d-%02d-%02d %02d:%02d:%02d]\tLoop : %I64u\n", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec, iLoop);
 		wprintf_s(L"=========================================================\n");
 		wprintf_s(L"Accept Total\t\t: %I64u\n", g_pGameServer->_iAcceptTotal);
 		wprintf_s(L"AcceptTPS\t\t: %d\n", g_pGameServer->_iAcceptTPS);
@@ -52,7 +57,8 @@ int _tmain(int argc, _TCHAR* argv[])
 		wprintf_s(L"Packet Pool Chunk Size\t: %d\n", CPacket::PacketPool.GetAllocCount());
 		wprintf_s(L"Using Packet\t\t: %d\n", CPacket::PacketPool.GetUseCount());
 
-		Sleep(999);
+		iLoop++;
+		Sleep(998);
 	}
 
 	timeEndPeriod(1);
@@ -288,7 +294,7 @@ bool LoadConfig(void)
 		}
 		else
 		{
-			wsprintf(szKey, L"LOG_LEVEL");
+			/*wsprintf(szKey, L"LOG_LEVEL");
 			if (!parser.GetValue(szKey, &g_Config.iLogLevel))
 			{
 				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
@@ -314,7 +320,7 @@ bool LoadConfig(void)
 			{
 				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
 				return false;
-			}
+			}*/
 		}
 	}
 
