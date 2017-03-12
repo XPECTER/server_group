@@ -107,6 +107,42 @@ bool CConfigParser::GetValue(const wchar_t *key, wchar_t *outParam, int len)
 	return false;
 }
 
+bool CConfigParser::GetValue(const wchar_t *key, char *outParam, int len)
+{
+	wchar_t *endPos = wcsstr(this->_pos, L"}");
+	int strLen = (int)((char *)endPos - (char *)this->_pos) + 2;
+
+	wchar_t *copyStr = (wchar_t *)malloc(strLen);
+	memcpy_s(copyStr, strLen, this->_pos, strLen);
+	wchar_t *token = nullptr, *nextToken = nullptr;
+	int iCloseBlockCount = 0;
+	size_t i;
+
+	token = wcstok_s(copyStr, L" \t\r\n", &nextToken);
+	while (true)
+	{
+		if (nullptr == token)
+			break;
+		else
+		{
+			if (0 == wcscmp(token, key))
+			{
+				if ('/' != *token && '/' != *(token + 1))
+				{
+					token = wcstok_s(NULL, L" \t", &nextToken);
+					token = wcstok_s(NULL, L"\"", &nextToken);
+					wcstombs_s(&i, outParam, len, token, len);
+					return true;
+				}
+			}
+
+			token = wcstok_s(NULL, L" \t\r\n", &nextToken);
+		}
+	}
+
+	return false;
+}
+
 bool CConfigParser::GetValue(const wchar_t *key, int *outParam)
 {
 	wchar_t *endPos = wcsstr(this->_pos, L"}");

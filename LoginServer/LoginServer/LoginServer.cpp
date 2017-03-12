@@ -26,8 +26,6 @@ CLoginServer::CLoginServer()
 
 	_hMonitorTPSThread = (HANDLE)_beginthreadex(NULL, 0, MonitorTPSThreadFunc, this, NULL, NULL);
 	_hUpdateThread = INVALID_HANDLE_VALUE;
-
-	
 }
 
 CLoginServer::~CLoginServer()
@@ -76,19 +74,17 @@ void CLoginServer::OnClientJoin(CLIENT_ID clientID)
 void CLoginServer::OnClientLeave(CLIENT_ID clientID)
 {
 	AcquireSRWLockExclusive(&this->_srwLock);
+
 	st_PLAYER *pPlayer = FindPlayer(clientID);
 
 	if (nullptr == pPlayer)
-	{
 		CCrashDump::Crash();
-	}
 
-	// 게임 서버 추가시 조건 추가
-	if (FALSE == InterlockedExchange(&pPlayer->_bChatServerRecv, TRUE)
-		&& TRUE == InterlockedExchange(&pPlayer->_bSendFlag, TRUE))
+	if (TRUE == pPlayer->_bSendFlag)
 	{
 		InterlockedDecrement(&this->_Monitor_LoginWait);
 	}
+
 	ReleaseSRWLockExclusive(&this->_srwLock);
 	
 	this->RemovePlayer(clientID);
@@ -105,7 +101,6 @@ void CLoginServer::OnRecv(CLIENT_ID clientID, CPacket *pPacket)
 	{
 		case en_PACKET_CS_LOGIN_REQ_LOGIN:
 			this->PacketProc_ReqLogin(clientID, pPacket);
-			//SYSLOG(L"PACKET", LOG::LEVEL_DEBUG, L"0x%08x", clientID);
 			break;
 
 		default:
@@ -218,10 +213,13 @@ bool CLoginServer::PacketProc_ReqLogin(CLIENT_ID clientID, CPacket *pPacket)
 		CPacket *pSendPacket = CPacket::Alloc();
 		MakePacket_ResLogin(pSendPacket, input.AccountNo, output.szID, output.szNick, output.Status);
 		SendPacket(clientID, pSendPacket);
+		pSendPacket->Free();
 		return true;
 	}
 	else
 	{
+		InterlockedIncrement(&this->_Monitor_LoginWait);
+
 		AcquireSRWLockShared(&this->_srwLock);
 		st_PLAYER *pPlayer = FindPlayer(clientID);
 		ReleaseSRWLockShared(&this->_srwLock);
@@ -244,8 +242,8 @@ bool CLoginServer::PacketProc_ReqLogin(CLIENT_ID clientID, CPacket *pPacket)
 			this->_lanserver_Login->SendPacket_ServerGroup(1, pSendPacket);
 			pSendPacket->Free();
 
-			InterlockedExchange(&pPlayer->_bSendFlag, TRUE);
-			InterlockedIncrement(&this->_Monitor_LoginWait);
+			/*InterlockedExchange(&pPlayer->_bSendFlag, TRUE);*/
+			pPlayer->_bSendFlag = TRUE;
 			return true;
 		}
 	}
@@ -253,7 +251,8 @@ bool CLoginServer::PacketProc_ReqLogin(CLIENT_ID clientID, CPacket *pPacket)
 
 bool CLoginServer::ResponseCheck(__int64 accountNo, int serverType)
 {
-	st_PLAYER *pPlayer = nullptr;
+	st_PLAYER *pPlayer = NULL;
+
 	AcquireSRWLockShared(&this->_srwLock);
 	for (auto iter = _playerMap.begin(); iter != _playerMap.end(); ++iter)
 	{
@@ -263,7 +262,7 @@ bool CLoginServer::ResponseCheck(__int64 accountNo, int serverType)
 	}
 	ReleaseSRWLockShared(&this->_srwLock);
 
-	if (nullptr != pPlayer)
+	if (pPlayer != _playerMap.end()->second)
 	{
 		switch (serverType)
 		{
@@ -281,9 +280,9 @@ bool CLoginServer::ResponseCheck(__int64 accountNo, int serverType)
 		}
 
 		this->SendPacket_ResponseLogin(pPlayer, dfLOGIN_STATUS_OK);
-		InterlockedDecrement(&this->_Monitor_LoginWait);
+		
 
-		time_t t =GetTickCount64() - pPlayer->_timeoutTick;
+		time_t t = GetTickCount64() - pPlayer->_timeoutTick;
 		InterlockedAdd64(&this->_Monitor_LoginProcessTime_Total, t);
 
 		if (t > this->_Monitor_LoginProcessTime_Max)

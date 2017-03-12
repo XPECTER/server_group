@@ -20,13 +20,12 @@ class CLoginServer : public CNetServer
 
 		__int64 _accountNo;
 		char _sessionKey[64];
-		/*__int64 _timeoutTick;*/
 		unsigned __int64 _timeoutTick;
 
 		long _bGameServerRecv;
 		long _bChatServerRecv;
 
-		long _bSendFlag;
+		long _bSendFlag;				// 로그인 패킷을 보냈는지 여부
 	};
 
 public:
@@ -143,15 +142,6 @@ private:
 	long				_Monitor_UpdateCounter;
 	long				_Monitor_LoginSuccessCounter;
 
-
-	HANDLE				_hMonitorTPSThread;
-	static unsigned __stdcall	MonitorTPSThreadFunc(void *lpParam);
-	bool				MonitorTPSThread_update(void);
-
-	HANDLE				_hUpdateThread;
-	static unsigned __stdcall	UpdateThreadFunc(void *lpParam);
-	bool				UpdateThread_update(void);
-
 	// LanServer (connected to GameServer, ChatServer)
 	CLanServer_Login	*_lanserver_Login;
 
@@ -159,4 +149,16 @@ private:
 	CMemoryPool<st_PLAYER> _playerPool;
 
 	SRWLOCK _srwLock;
+
+	// 스레드 관련
+private:
+	// 모니터링 스레드
+	HANDLE				_hMonitorTPSThread;
+	static unsigned __stdcall	MonitorTPSThreadFunc(void *lpParam);
+	bool				MonitorTPSThread_update(void);
+
+	// 업데이트 스레드
+	HANDLE				_hUpdateThread;
+	static unsigned __stdcall	UpdateThreadFunc(void *lpParam);
+	bool				UpdateThread_update(void);
 };

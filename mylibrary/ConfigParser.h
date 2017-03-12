@@ -10,6 +10,8 @@ public :
 	bool MoveConfigBlock(const wchar_t *configBlockName);
 	
 	bool GetValue(const wchar_t *key, wchar_t *outParam, int len);
+	bool GetValue(const wchar_t *key, char *outParam, int len);
+
 	bool GetValue(const wchar_t *key, int *outParam);
 	bool GetValue(const wchar_t *key, bool *outParam);
 

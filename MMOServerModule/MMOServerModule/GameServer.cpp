@@ -69,6 +69,12 @@ bool CGameServer::CPlayer::OnAuth_PacketProc(void)
 					break;
 				}
 
+				case en_PACKET_CS_GAME_REQ_HEARTBEAT:
+				{
+					PacketProc_ClientHeartBeat(pRecvPacket);
+					break;
+				}
+
 				default:
 				{
 					SYSLOG(L"SYSTEM", LOG::LEVEL_DEBUG, L"Wrong type packet");
@@ -204,12 +210,18 @@ void  CGameServer::CPlayer::PacketProc_Login(CPacket *pRecvPacket)
 	}
 
 	// DB°Ë»ö
+	stDB_ACCOUNT_READ_USER_in in;
+	stDB_ACCOUNT_READ_USER_out out;
+
+	in.AccountNo = iAccountNo;
+	this->_pGameServer->_database.Query_AccountDB(enDB_ACCOUNT_READ_USER, &in, &out);
+
 	this->_byParty = 1;
 	MakePacket_ResLogin(pSendPacket, 1, iAccountNo);
 	SendPacket(pSendPacket);
 	pSendPacket->Free();
 
-	SetMode_Game();
+	//SetMode_Game();
 	return;
 }
 
@@ -482,13 +494,6 @@ void CGameServer::Schedule_Client(void)
 unsigned __stdcall CGameServer::MonitorThreadFunc(void *lpParam)
 {
 	CGameServer *pServer = (CGameServer *)lpParam;
-
-	/*while (!pServer->_bStop)
-	{
-		pServer->MonitorThread_update();
-		Sleep(dfTHREAD_UPDATE_TICK_MONITOR);
-	}*/
-
 	return pServer->MonitorThread_update();
 }
 
@@ -534,7 +539,7 @@ bool CGameServer::MonitorThread_update(void)
 unsigned __stdcall CGameServer::DatabaseWriteThread(void *lpParam)
 {
 	CGameServer *pServer = (CGameServer *)lpParam;
-	return 0; /*pServer->MonitorThread_update();*/
+	return pServer->DatabaseWriteThread_update();
 }
 
 bool CGameServer::DatabaseWriteThread_update(void)

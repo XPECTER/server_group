@@ -264,7 +264,6 @@ unsigned _stdcall CLanServer::AcceptThreadFunc(void *lpParam)
 		keepAlive.keepaliveinterval = 2000;
 		WSAIoctl(clientSock, SIO_KEEPALIVE_VALS, &keepAlive, sizeof(tcp_keepalive), 0, 0, 0, NULL, NULL);
 
-
 		index = -1;
 		PROFILING_BEGIN(L"SearchEmptySession");
 		pServer->_indexStack.Pop(&index);
@@ -297,7 +296,6 @@ unsigned _stdcall CLanServer::AcceptThreadFunc(void *lpParam)
 			closesocket(pSession->ClientSock);
 		}
 
-		//InterlockedIncrement((long *)&pSession->IOCount);
 		// 여기서 ReleaseFlag를 0으로 만들면 된다.
 		InterlockedIncrement64(&pSession->IOReleaseCompare->IOCount);
 		InterlockedExchange64(&pSession->IOReleaseCompare->bReleaseFlag, 0);

@@ -294,33 +294,113 @@ bool LoadConfig(void)
 		}
 		else
 		{
-			/*wsprintf(szKey, L"LOG_LEVEL");
-			if (!parser.GetValue(szKey, &g_Config.iLogLevel))
+			// AccountDB
+			wsprintf(szKey, L"ACCOUNT_IP");
+			if (!parser.GetValue(szKey, g_Config.szAccountDBIP, 16))
 			{
 				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
 				return false;
 			}
 
-			wsprintf(szKey, L"PRINT_CONSOLE");
-			if (!parser.GetValue(szKey, &g_Config.bPrintConsole))
+			wsprintf(szKey, L"ACCOUNT_PORT");
+			if (!parser.GetValue(szKey, &g_Config.iAccountDBPort))
 			{
 				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
 				return false;
 			}
 
-			wsprintf(szKey, L"PRINT_FILE");
-			if (!parser.GetValue(szKey, &g_Config.bPrintFile))
+			wsprintf(szKey, L"ACCOUNT_USER");
+			if (!parser.GetValue(szKey, g_Config.szAccountDBUser, 32))
 			{
 				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
 				return false;
 			}
 
-			wsprintf(szKey, L"PRINT_DATABASE");
-			if (!parser.GetValue(szKey, &g_Config.bPrintDatabase))
+			wsprintf(szKey, L"ACCOUNT_PASSWORD");
+			if (!parser.GetValue(szKey, g_Config.szAccountDBPassword, 32))
 			{
 				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
 				return false;
-			}*/
+			}
+
+			wsprintf(szKey, L"ACCOUNT_DBNAME");
+			if (!parser.GetValue(szKey, g_Config.szAccountDBName, 32))
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
+				return false;
+			}
+
+			// GameDB
+			wsprintf(szKey, L"GAME_IP");
+			if (!parser.GetValue(szKey, g_Config.szGameDBIP, 16))
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
+				return false;
+			}
+
+			wsprintf(szKey, L"GAME_PORT");
+			if (!parser.GetValue(szKey, &g_Config.iGameDBPort))
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
+				return false;
+			}
+
+			wsprintf(szKey, L"GAME_USER");
+			if (!parser.GetValue(szKey, g_Config.szGameDBUser, 32))
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
+				return false;
+			}
+
+			wsprintf(szKey, L"GAME_PASSWORD");
+			if (!parser.GetValue(szKey, g_Config.szGameDBPassword, 32))
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
+				return false;
+			}
+
+			wsprintf(szKey, L"GAME_DBNAME");
+			if (!parser.GetValue(szKey, g_Config.szGameDBName, 32))
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
+				return false;
+			}
+
+			// LogDB
+			wsprintf(szKey, L"LOG_IP");
+			if (!parser.GetValue(szKey, g_Config.szLogDBIP, 16))
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
+				return false;
+			}
+
+			wsprintf(szKey, L"LOG_PORT");
+			if (!parser.GetValue(szKey, &g_Config.iLogDBPort))
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
+				return false;
+			}
+
+			wsprintf(szKey, L"LOG_USER");
+			if (!parser.GetValue(szKey, g_Config.szLogDBUser, 32))
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
+				return false;
+			}
+
+			wsprintf(szKey, L"LOG_PASSWORD");
+			if (!parser.GetValue(szKey, g_Config.szLogDBPassword, 32))
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
+				return false;
+			}
+
+			wsprintf(szKey, L"LOG_DBNAME");
+			if (!parser.GetValue(szKey, g_Config.szLogDBName, 32))
+			{
+				SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Not found block : %s", szKey);
+				return false;
+			}
 		}
 	}
 

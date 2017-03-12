@@ -71,7 +71,16 @@ struct stDB_ACCOUNT_WRITE_STATUS_LOGOUT_in
 	__int64		AccountNo;
 };
 
-
+//--------------------------------------------------------
+// DB 구분 enum값
+//
+//--------------------------------------------------------
+enum en_DB_TYPE
+{
+	en_DB_TYPE_ACCOUNT = 1,
+	en_DB_TYPE_GAME = 2,
+	en_DB_TYPE_LOG = 3,
+};
 
 
 //--------------------------------------------------------
@@ -83,6 +92,7 @@ struct stDB_ACCOUNT_WRITE_STATUS_LOGOUT_in
 #define dfDBWRITER_TYPE_ACCOUNT		1		// AccountDB 
 #define dfDBWRITER_TYPE_GAME		2		// GameDB
 #define dfDBWRITER_TYPE_HEARTBEAT	3		// DBThread Heartbeat
+#define dfDBWRITER_TYPE
 
 //--------------------------------------------------------
 // DB 저장 메시지 통합본.

@@ -144,7 +144,7 @@ void CLanServer_Login::SendPacket_ServerGroup(int serverNum, CPacket *pSendPacke
 	if (nullptr != pSessionSet)
 	{
 		SendPacket(pSessionSet->_chatServerID, pSendPacket);
-		//SendPacket(pSessionSet->_gameServerID, pSendPacket);
+		SendPacket(pSessionSet->_gameServerID, pSendPacket);
 	}
 	
 	return;

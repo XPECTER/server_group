@@ -38,7 +38,23 @@ public:
 	bool	bPrintDatabase;
 
 	// DATABASE Block
+	char	szAccountDBIP[16];
+	int		iAccountDBPort;
+	char	szAccountDBUser[32];
+	char	szAccountDBPassword[32];
+	char	szAccountDBName[32];
 
+	char	szGameDBIP[16];
+	int		iGameDBPort;
+	char	szGameDBUser[32];
+	char	szGameDBPassword[32];
+	char	szGameDBName[32];
+
+	char	szLogDBIP[16];
+	int		iLogDBPort;
+	char	szLogDBUser[32];
+	char	szLogDBPassword[32];
+	char	szLogDBName[32];
 };
 
 extern CConfig g_Config;

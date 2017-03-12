@@ -110,7 +110,6 @@ AccountDB::~AccountDB()
 bool AccountDB::ReadDB(en_DB_ACTION_TYPE type, void *pIn, void *pOut)
 {
 	MYSQL_ROW row;
-	
 
 	switch (type)
 	{

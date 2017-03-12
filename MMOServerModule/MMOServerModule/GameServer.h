@@ -4,6 +4,7 @@
 #include "LanClient_Login.h"
 #include "LanClient_Agent.h"
 #include "LanClient_Monitoring.h"
+#include "DBConnector.h"
 
 #define dfDUMMY_ACCOUNTNO_LIMIT 999999
 
@@ -104,6 +105,9 @@ private:
 
 	// 하트비트용
 	__int64 _updateTick;
+
+	// 데이터베이스
+	CDatabase _database;
 
 	// 데이터베이스 메시지 풀
 	CMemoryPool<st_DBWRITER_MSG> _databaseMsgPool;
