@@ -74,18 +74,16 @@ void CLoginServer::OnClientJoin(CLIENT_ID clientID)
 void CLoginServer::OnClientLeave(CLIENT_ID clientID)
 {
 	AcquireSRWLockExclusive(&this->_srwLock);
-
 	st_PLAYER *pPlayer = FindPlayer(clientID);
-
+	ReleaseSRWLockExclusive(&this->_srwLock);
+	
 	if (nullptr == pPlayer)
 		CCrashDump::Crash();
 
-	if (TRUE == pPlayer->_bSendFlag)
+	if (TRUE == pPlayer->_bRecvFlag && FALSE == pPlayer->_bSendFlag)
 	{
 		InterlockedDecrement(&this->_Monitor_LoginWait);
 	}
-
-	ReleaseSRWLockExclusive(&this->_srwLock);
 	
 	this->RemovePlayer(clientID);
 	return;
@@ -112,6 +110,12 @@ void CLoginServer::OnSend(CLIENT_ID clientID, int sendsize)
 {
 	InterlockedIncrement64(&this->_OnSendCallCount);
 	InterlockedIncrement(&this->_Monitor_LoginSuccessCounter);
+	
+	AcquireSRWLockExclusive(&this->_srwLock);
+	st_PLAYER *pPlayer = FindPlayer(clientID);
+	ReleaseSRWLockExclusive(&this->_srwLock);
+	InterlockedExchange(&pPlayer->_bSendFlag, TRUE);
+	InterlockedDecrement(&this->_Monitor_LoginWait);
 	
 	this->ClientDisconnect(clientID);
 	return;
@@ -144,6 +148,7 @@ bool CLoginServer::InsertPlayer(CLIENT_ID clientID)
 	pPlayer->_timeoutTick = GetTickCount64();
 	pPlayer->_bChatServerRecv = FALSE;
 	pPlayer->_bGameServerRecv = FALSE;
+	pPlayer->_bRecvFlag = FALSE;
 	pPlayer->_bSendFlag = FALSE;
 
 	AcquireSRWLockExclusive(&this->_srwLock);
@@ -220,9 +225,9 @@ bool CLoginServer::PacketProc_ReqLogin(CLIENT_ID clientID, CPacket *pPacket)
 	{
 		InterlockedIncrement(&this->_Monitor_LoginWait);
 
-		AcquireSRWLockShared(&this->_srwLock);
+		AcquireSRWLockExclusive(&this->_srwLock);
 		st_PLAYER *pPlayer = FindPlayer(clientID);
-		ReleaseSRWLockShared(&this->_srwLock);
+		ReleaseSRWLockExclusive(&this->_srwLock);
 
 		if (nullptr == pPlayer)
 		{
@@ -243,7 +248,7 @@ bool CLoginServer::PacketProc_ReqLogin(CLIENT_ID clientID, CPacket *pPacket)
 			pSendPacket->Free();
 
 			/*InterlockedExchange(&pPlayer->_bSendFlag, TRUE);*/
-			pPlayer->_bSendFlag = TRUE;
+			pPlayer->_bRecvFlag = TRUE;
 			return true;
 		}
 	}
@@ -253,14 +258,14 @@ bool CLoginServer::ResponseCheck(__int64 accountNo, int serverType)
 {
 	st_PLAYER *pPlayer = NULL;
 
-	AcquireSRWLockShared(&this->_srwLock);
+	AcquireSRWLockExclusive(&this->_srwLock);
 	for (auto iter = _playerMap.begin(); iter != _playerMap.end(); ++iter)
 	{
 		pPlayer = iter->second;
 		if (accountNo == pPlayer->_accountNo)
 			break;
 	}
-	ReleaseSRWLockShared(&this->_srwLock);
+	ReleaseSRWLockExclusive(&this->_srwLock);
 
 	if (pPlayer != _playerMap.end()->second)
 	{

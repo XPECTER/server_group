@@ -25,6 +25,7 @@ class CLoginServer : public CNetServer
 		long _bGameServerRecv;
 		long _bChatServerRecv;
 
+		long _bRecvFlag;				// 로그인 패킷을 받았는지 여부
 		long _bSendFlag;				// 로그인 패킷을 보냈는지 여부
 	};
 

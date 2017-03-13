@@ -12,6 +12,7 @@ CGameServer *g_pGameServer = nullptr;
 bool LoadConfig(void);
 void KeyProcess(void);
 
+
 int _tmain(int argc, _TCHAR* argv[])
 {
 	timeBeginPeriod(1);

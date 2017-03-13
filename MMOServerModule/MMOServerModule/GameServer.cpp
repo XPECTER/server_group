@@ -14,6 +14,8 @@ CGameServer::CPlayer::~CPlayer()
 
 void CGameServer::CPlayer::Player_Init(CGameServer *pGameServer)
 {
+	// 배열 초기화에 이니셜라이저를 못넣어서 이렇게 했는데
+	// 방법이 있을까??
 	this->_clientID = -1;
 	this->_connectInfo = NULL;
 	this->_recvQ.ClearBuffer();
@@ -489,7 +491,6 @@ void CGameServer::Schedule_Client(void)
 
 	return;
 }
-
 
 unsigned __stdcall CGameServer::MonitorThreadFunc(void *lpParam)
 {
