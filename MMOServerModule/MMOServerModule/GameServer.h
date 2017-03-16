@@ -4,6 +4,8 @@
 #include "LanClient_Login.h"
 #include "LanClient_Agent.h"
 #include "LanClient_Monitoring.h"
+#include "Field.h"
+#include "JumpPointSearch.h"
 #include "DBConnector.h"
 
 #define dfDUMMY_ACCOUNTNO_LIMIT 999999
@@ -107,7 +109,9 @@ private:
 	__int64 _updateTick;
 
 	// 데이터베이스
-	CDatabase _database;
+	AccountDB	*_database_Account;
+	GameDB		*_database_Game;
+	LogDB		*_database_Log;
 
 	// 데이터베이스 메시지 풀
 	CMemoryPool<st_DBWRITER_MSG> _databaseMsgPool;

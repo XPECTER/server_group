@@ -214,12 +214,13 @@ void  CGameServer::CPlayer::PacketProc_Login(CPacket *pRecvPacket)
 	// DB검색
 	stDB_ACCOUNT_READ_USER_in in;
 	stDB_ACCOUNT_READ_USER_out out;
-
 	in.AccountNo = iAccountNo;
-	this->_pGameServer->_database.Query_AccountDB(enDB_ACCOUNT_READ_USER, &in, &out);
+	
+	this->_pGameServer->_database_Account->QueryDB(enDB_ACCOUNT_READ_USER, &in, &out);
 
-	this->_byParty = 1;
-	MakePacket_ResLogin(pSendPacket, 1, iAccountNo);
+	// out의 status가 0이면 로그인 실패 패킷 보내고 끊기
+	this->_byParty = out.Party;
+	MakePacket_ResLogin(pSendPacket, out.Status, iAccountNo);
 	SendPacket(pSendPacket);
 	pSendPacket->Free();
 
@@ -328,6 +329,11 @@ CGameServer::CGameServer(int iClientMax) : CMMOServer(iClientMax)
 	this->_lanClient_Monitoring = new CLanClient_Monitoring(this);
 	this->_lanClient_Login = new CLanClient_Login(this);
 	this->_lanClient_Agent = new CLanClient_Agent(this);
+
+	// Database
+	this->_database_Account = new AccountDB(g_Config.szAccountDBIP, g_Config.szAccountDBUser, g_Config.szAccountDBPassword, g_Config.szAccountDBName, g_Config.iAccountDBPort);
+	this->_database_Game = new GameDB(g_Config.szGameDBIP, g_Config.szGameDBUser, g_Config.szGameDBPassword, g_Config.szGameDBName, g_Config.iGameDBPort);
+	this->_database_Log = new LogDB(g_Config.szLogDBIP, g_Config.szLogDBUser, g_Config.szLogDBPassword, g_Config.szLogDBName, g_Config.iLogDBPort);
 
 	// GameTh 하트비트 용도
 	this->_updateTick = time(NULL);

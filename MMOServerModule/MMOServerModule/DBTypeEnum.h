@@ -1,8 +1,5 @@
 #pragma once
 
-#define dfID_MAX_LEN 20
-#define dfNICK_MAX_LEN 20
-
 //--------------------------------------------------------
 // DB 의 정보를 얻기,저장하기 타입.
 //

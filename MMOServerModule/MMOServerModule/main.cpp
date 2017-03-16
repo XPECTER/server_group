@@ -15,6 +15,29 @@ void KeyProcess(void);
 
 int _tmain(int argc, _TCHAR* argv[])
 {
+	//////////////////////////////////////////////////////////
+	// 필드 테스트 코드
+	/*CField<CLIENT_ID> field(400, 200);
+
+	field.AddTileObject(1, 0, 0);
+	field.AddTileObject(2, 0, 0);
+	field.AddTileObject(3, 0, 0);
+	field.AddTileObject(4, 0, 0);
+
+	field.DelTileObject(3, 0, 0);
+
+	std::list<CLIENT_ID> list;
+	field.GetTileObject(0, 0, &list);*/
+
+	// 점프 포인트 서치 테스트 코드
+	CJumpPointSearch jps(400, 200);		// 서버에서 사용할 크기이다. 클라이언트 맵의 X2배씩
+	jps.JumpPointSearch_Init();
+	jps.LoadTextMap(L"Map.txt");
+	int out = 0;
+	jps.FindPath(4, 20, 4, 10, NULL, &out);
+
+
+	//////////////////////////////////////////////////////////
 	timeBeginPeriod(1);
 
 	unsigned __int64 iLoop = 0;

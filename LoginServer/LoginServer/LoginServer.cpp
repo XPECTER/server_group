@@ -80,7 +80,7 @@ void CLoginServer::OnClientLeave(CLIENT_ID clientID)
 	if (nullptr == pPlayer)
 		CCrashDump::Crash();
 
-	if (TRUE == pPlayer->_bRecvFlag && FALSE == pPlayer->_bSendFlag)
+	if (TRUE == pPlayer->_bRecvFlag)
 	{
 		InterlockedDecrement(&this->_Monitor_LoginWait);
 	}
@@ -111,11 +111,11 @@ void CLoginServer::OnSend(CLIENT_ID clientID, int sendsize)
 	InterlockedIncrement64(&this->_OnSendCallCount);
 	InterlockedIncrement(&this->_Monitor_LoginSuccessCounter);
 	
-	AcquireSRWLockExclusive(&this->_srwLock);
+	/*AcquireSRWLockExclusive(&this->_srwLock);
 	st_PLAYER *pPlayer = FindPlayer(clientID);
 	ReleaseSRWLockExclusive(&this->_srwLock);
 	InterlockedExchange(&pPlayer->_bSendFlag, TRUE);
-	InterlockedDecrement(&this->_Monitor_LoginWait);
+	InterlockedDecrement(&this->_Monitor_LoginWait);*/
 	
 	this->ClientDisconnect(clientID);
 	return;

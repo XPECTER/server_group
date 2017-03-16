@@ -90,6 +90,15 @@
     <ClInclude Include="GlobalTime.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="Field.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="JumpPointSearch.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="defines.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -153,6 +162,12 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="GlobalTime.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Field.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="JumpPointSearch.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

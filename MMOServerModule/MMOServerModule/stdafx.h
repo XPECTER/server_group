@@ -19,6 +19,8 @@
 #include <conio.h>
 
 #include <map>
+#include <vector>
+#include <list>
 
 #include <my_global.h>
 #include <mysql.h>
@@ -41,6 +43,7 @@
 
 #include "../../mylibrary/LanClient.h"
 
+#include "defines.h"
 #include "Config.h"
 #include "CommonProtocol.h"
 #include "DBTypeEnum.h"

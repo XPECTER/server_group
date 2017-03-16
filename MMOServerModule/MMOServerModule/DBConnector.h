@@ -65,6 +65,8 @@ class AccountDB : public CDBConnectorTLS
 public:
 	AccountDB(char *szConnectIP, char *szConnectUser, char *szConnectPass, char *szConnectDBName, int iConnectPort);
 	virtual ~AccountDB();
+
+	void QueryDB(en_DB_ACTION_TYPE type, PVOID pIn, PVOID pOut);
 };
 
 class GameDB : public CDBConnectorTLS
@@ -72,6 +74,8 @@ class GameDB : public CDBConnectorTLS
 public:
 	GameDB(char *szConnectIP, char *szConnectUser, char *szConnectPass, char *szConnectDBName, int iConnectPort);
 	virtual ~GameDB();
+
+	void QueryDB(en_DB_ACTION_TYPE type, PVOID pIn, PVOID pOut);
 };
 
 class LogDB : public CDBConnectorTLS
@@ -79,4 +83,6 @@ class LogDB : public CDBConnectorTLS
 public:
 	LogDB(char *szConnectIP, char *szConnectUser, char *szConnectPass, char *szConnectDBName, int iConnectPort);
 	virtual ~LogDB();
+
+	void QueryDB(en_DB_ACTION_TYPE type, PVOID pIn, PVOID pOut);
 };
