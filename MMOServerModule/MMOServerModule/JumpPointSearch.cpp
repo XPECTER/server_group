@@ -46,6 +46,9 @@ bool CJumpPointSearch::LoadTextMap(wchar_t *szFileName)
 			}
 
 			token = strtok_s(NULL, ",\n", &next);
+
+			if (NULL == token)
+				break;
 		}
 	}
 
@@ -109,8 +112,23 @@ bool CJumpPointSearch::FindPath(WORD wStartX, WORD wStartY, WORD wEndX, WORD wEn
 		{
 			case en_DIR_NN:
 			{
+				// 방향 진행하는 순서는 기획에 따라 달라질 수 있음
+				// 지금은 직선방향(위 -> 오른 -> 아래 -> 왼) 먼저하고 
+				// 대각선 방향(왼 위 -> 오른 위 -> 오른 아래 -> 왼 아래)
+
 				if (this->Jump_DirUU(*iter))
 					break;
+
+				if (this->Jump_DirRR(*iter))
+					break;
+
+				if (this->Jump_DirDD(*iter))
+					break;
+
+				if (this->Jump_DirLL(*iter))
+					break;
+
+
 				break;
 			}
 
@@ -216,14 +234,14 @@ bool CJumpPointSearch::Jump(NODE *pNode, BYTE byDir)
 
 bool CJumpPointSearch::Jump_DirUU(NODE *pNode)
 {
-	WORD wX = pNode->_wPosX;
-	WORD wY = pNode->_wPosY;
+	short wX = (short)pNode->_wPosX;
+	short wY = (short)pNode->_wPosY;
 
 	while (true)
 	{
 		wY--;
 
-		if (0 > wY || en_TILE_FIX_OBSTACLE == map[wY][wX])
+		if ((0 > (wY - 1)) || (en_TILE_FIX_OBSTACLE == map[wY][wX]))
 			break;
 
 		if (this->CheckDestination(wX, wY))
@@ -236,54 +254,108 @@ bool CJumpPointSearch::Jump_DirUU(NODE *pNode)
 		if (0 <= wX - 1 && this->_width >= wX + 2)
 		{
 			// 왼쪽 체크
-			if (en_TILE_FIX_OBSTACLE == map[wY][wX - 1] && en_TILE_NONE == map[wY][wX - 1])
+			if (en_TILE_FIX_OBSTACLE == map[wY][wX - 1] && en_TILE_NONE == map[wY - 1][wX - 1])
 			{
 				this->CreateNode(pNode, wX, wY, en_DIR_UU);
-				break;
+				return true;
 			}
 			// 오른쪽 체크
-			else if (en_TILE_FIX_OBSTACLE == map[wY][wX + 1] && en_TILE_NONE == map[wY][wX + 1])
+			else if (en_TILE_FIX_OBSTACLE == map[wY][wX + 1] && en_TILE_NONE == map[wY - 1][wX + 1])
 			{
 				this->CreateNode(pNode, wX, wY, en_DIR_UU);
-				break;
+				return true;
 			}
 		}
 		// 왼쪽이 벽
 		else if (0 > wX - 1)
 		{
-			if (en_TILE_FIX_OBSTACLE == map[wY][wX + 1] && en_TILE_NONE == map[wY][wX + 1])
+			if (en_TILE_FIX_OBSTACLE == map[wY][wX + 1] && en_TILE_NONE == map[wY - 1][wX + 1])
 			{
 				this->CreateNode(pNode, wX, wY, en_DIR_UU);
-				break;
+				return true;
 			}
 		}
 		// 오른쪽이 벽
 		else
 		{
-			if (en_TILE_FIX_OBSTACLE == map[wY][wX - 1] && en_TILE_NONE == map[wY][wX - 1])
+			if (en_TILE_FIX_OBSTACLE == map[wY][wX - 1] && en_TILE_NONE == map[wY - 1][wX - 1])
 			{
 				this->CreateNode(pNode, wX, wY, en_DIR_UU);
-				break;
+				return true;
 			}
 		}
 	}
 
 	return false;
 }
-void CJumpPointSearch::Jump_DirRR(NODE *pNode, WORD wX, WORD wY)
-{
 
+bool CJumpPointSearch::Jump_DirRR(NODE *pNode)
+{
+	short wX = (short)pNode->_wPosX;
+	short wY = (short)pNode->_wPosY;
+
+	while (true)
+	{
+		wX++;
+
+		if (((this->_width - 1) < (wX + 1)) || en_TILE_FIX_OBSTACLE == map[wY][wX])
+			break;
+
+		if (this->CheckDestination(wX, wY))
+		{
+			this->CreateNode(pNode, wX, wY, en_DIR_NN);
+			return true;
+		}
+
+		// 양 쪽에 벽이 없음
+		if (0 <= wY - 1 && this->_height >= wY + 2)
+		{
+			// 위 쪽 체크
+			if (en_TILE_FIX_OBSTACLE == map[wY - 1][wX] && en_TILE_NONE == map[wY - 1][wX + 1])
+			{
+				this->CreateNode(pNode, wX, wY, en_DIR_RR);
+				return true;
+			}
+			// 아래 쪽 체크
+			else if (en_TILE_FIX_OBSTACLE == map[wY + 1][wX] && en_TILE_NONE == map[wY + 1][wX + 1])
+			{
+				this->CreateNode(pNode, wX, wY, en_DIR_RR);
+				return true;
+			}
+		}
+		// 위 쪽이 벽
+		else if (0 > wY - 1)
+		{
+			if (en_TILE_FIX_OBSTACLE == map[wY + 1][wX] && en_TILE_NONE == map[wY + 1][wX + 1])
+			{
+				this->CreateNode(pNode, wX, wY, en_DIR_RR);
+				return true;
+			}
+		}
+		// 아래 쪽이 벽
+		else
+		{
+			if (en_TILE_FIX_OBSTACLE == map[wY - 1][wX] && en_TILE_NONE == map[wY - 1][wX + 1])
+			{
+				this->CreateNode(pNode, wX, wY, en_DIR_RR);
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
+
 bool CJumpPointSearch::Jump_DirDD(NODE *pNode)
 {
-	WORD wX = pNode->_wPosX;
-	WORD wY = pNode->_wPosY;
+	short wX = (short)pNode->_wPosX;
+	short wY = (short)pNode->_wPosY;
 
 	while (true)
 	{
 		wY++;
 
-		if (this->_height < wY || en_TILE_FIX_OBSTACLE == map[wY][wX])
+		if (((this->_height - 1) < (wY + 1)) || (en_TILE_FIX_OBSTACLE == map[wY][wX]))
 			break;
 
 		if (this->CheckDestination(wX, wY))
@@ -296,47 +368,110 @@ bool CJumpPointSearch::Jump_DirDD(NODE *pNode)
 		if (0 <= wX - 1 && this->_width >= wX + 2)
 		{
 			// 왼쪽 체크
-			if (en_TILE_FIX_OBSTACLE == map[wY][wX - 1] && en_TILE_NONE == map[wY][wX - 1])
+			if (en_TILE_FIX_OBSTACLE == map[wY][wX - 1] && en_TILE_NONE == map[wY + 1][wX - 1])
 			{
-				this->CreateNode(pNode, wX, wY, en_DIR_UU);
-				break;
+				this->CreateNode(pNode, wX, wY, en_DIR_DD);
+				return true;
 			}
 			// 오른쪽 체크
-			else if (en_TILE_FIX_OBSTACLE == map[wY][wX + 1] && en_TILE_NONE == map[wY][wX + 1])
+			else if (en_TILE_FIX_OBSTACLE == map[wY][wX + 1] && en_TILE_NONE == map[wY + 1][wX + 1])
 			{
-				this->CreateNode(pNode, wX, wY, en_DIR_UU);
-				break;
+				this->CreateNode(pNode, wX, wY, en_DIR_DD);
+				return true;
 			}
 		}
 		// 왼쪽이 벽
 		else if (0 > wX - 1)
 		{
-			if (en_TILE_FIX_OBSTACLE == map[wY][wX + 1] && en_TILE_NONE == map[wY][wX + 1])
+			if (en_TILE_FIX_OBSTACLE == map[wY][wX + 1] && en_TILE_NONE == map[wY + 1][wX + 1])
 			{
-				this->CreateNode(pNode, wX, wY, en_DIR_UU);
-				break;
+				this->CreateNode(pNode, wX, wY, en_DIR_DD);
+				return true;
 			}
 		}
 		// 오른쪽이 벽
 		else
 		{
-			if (en_TILE_FIX_OBSTACLE == map[wY][wX - 1] && en_TILE_NONE == map[wY][wX - 1])
+			if (en_TILE_FIX_OBSTACLE == map[wY][wX - 1] && en_TILE_NONE == map[wY + 1][wX - 1])
 			{
-				this->CreateNode(pNode, wX, wY, en_DIR_UU);
-				break;
+				this->CreateNode(pNode, wX, wY, en_DIR_DD);
+				return true;
 			}
 		}
 	}
 
 	return false;
 }
-void CJumpPointSearch::Jump_DirLL(NODE *pNode, WORD wX, WORD wY)
-{
 
+bool CJumpPointSearch::Jump_DirLL(NODE *pNode)
+{
+	short wX = (short)pNode->_wPosX;
+	short wY = (short)pNode->_wPosY;
+
+	while (true)
+	{
+		wX--;
+
+		if ((0 > (wX - 1)) || (en_TILE_FIX_OBSTACLE == map[wY][wX]))
+			break;
+
+		if (this->CheckDestination(wX, wY))
+		{
+			this->CreateNode(pNode, wX, wY, en_DIR_NN);
+			return true;
+		}
+
+		// 양 쪽에 벽이 없음
+		if (0 <= wY - 1 && this->_height >= wY + 2)
+		{
+			// 위 쪽 체크
+			if (en_TILE_FIX_OBSTACLE == map[wY - 1][wX] && en_TILE_NONE == map[wY - 1][wX - 1])
+			{
+				this->CreateNode(pNode, wX, wY, en_DIR_LL);
+				return true;
+			}
+			// 아래 쪽 체크
+			else if (en_TILE_FIX_OBSTACLE == map[wY + 1][wX] && en_TILE_NONE == map[wY + 1][wX - 1])
+			{
+				this->CreateNode(pNode, wX, wY, en_DIR_LL);
+				return true;
+			}
+		}
+		// 위 쪽이 벽
+		else if (0 > wY - 1)
+		{
+			if (en_TILE_FIX_OBSTACLE == map[wY + 1][wX] && en_TILE_NONE == map[wY + 1][wX - 1])
+			{
+				this->CreateNode(pNode, wX, wY, en_DIR_LL);
+				return true;
+			}
+		}
+		// 아래 쪽이 벽
+		else
+		{
+			if (en_TILE_FIX_OBSTACLE == map[wY - 1][wX] && en_TILE_NONE == map[wY - 1][wX - 1])
+			{
+				this->CreateNode(pNode, wX, wY, en_DIR_LL);
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
-void CJumpPointSearch::Jump_DirRU(NODE *pNode, WORD wX, WORD wY)
-{
 
+void CJumpPointSearch::Jump_DirRU(NODE *pNode)
+{
+	short wX = (short)pNode->_wPosX;
+	short wY = (short)pNode->_wPosY;
+
+	while (true)
+	{
+		wX++;
+		wY--;
+
+		if (wX )
+	}
 }
 void CJumpPointSearch::Jump_DirRD(NODE *pNode, WORD wX, WORD wY)
 {

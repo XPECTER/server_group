@@ -64,10 +64,10 @@ private:
 
 	bool Jump(NODE *pNode, BYTE byDir);
 	bool Jump_DirUU(NODE *pNode);
-	void Jump_DirRR(NODE *pNode, WORD wPosX, WORD wPosY);
+	bool Jump_DirRR(NODE *pNode);
 	bool Jump_DirDD(NODE *pNode);
-	void Jump_DirLL(NODE *pNode, WORD wPosX, WORD wPosY);
-	void Jump_DirRU(NODE *pNode, WORD wPosX, WORD wPosY);
+	bool Jump_DirLL(NODE *pNode);
+	void Jump_DirRU(NODE *pNode);
 	void Jump_DirRD(NODE *pNode, WORD wPosX, WORD wPosY);
 	void Jump_DirLD(NODE *pNode, WORD wPosX, WORD wPosY);
 	void Jump_DirLU(NODE *pNode, WORD wPosX, WORD wPosY);

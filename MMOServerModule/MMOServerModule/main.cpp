@@ -17,7 +17,7 @@ int _tmain(int argc, _TCHAR* argv[])
 {
 	//////////////////////////////////////////////////////////
 	// 필드 테스트 코드
-	/*CField<CLIENT_ID> field(400, 200);
+	/*CField<CLIENT_ID> field(600, 200);
 
 	field.AddTileObject(1, 0, 0);
 	field.AddTileObject(2, 0, 0);
@@ -30,7 +30,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	field.GetTileObject(0, 0, &list);*/
 
 	// 점프 포인트 서치 테스트 코드
-	CJumpPointSearch jps(400, 200);		// 서버에서 사용할 크기이다. 클라이언트 맵의 X2배씩
+	CJumpPointSearch jps(600, 200);		// 서버에서 사용할 크기이다. 클라이언트 맵의 X2배씩
 	jps.JumpPointSearch_Init();
 	jps.LoadTextMap(L"Map.txt");
 	int out = 0;
