@@ -60,17 +60,17 @@ public:
 private:
 	void SetFixedObstacle(WORD wX, WORD wY);
 
-	void CreateNode(NODE *pParents, WORD wPosX, WORD wPosY, BYTE byDir);
+	NODE* CreateNode(NODE *pParents, WORD wPosX, WORD wPosY, BYTE byDir);
 
 	bool Jump(NODE *pNode, BYTE byDir);
-	bool Jump_DirUU(NODE *pNode);
-	bool Jump_DirRR(NODE *pNode);
-	bool Jump_DirDD(NODE *pNode);
-	bool Jump_DirLL(NODE *pNode);
-	void Jump_DirRU(NODE *pNode);
-	void Jump_DirRD(NODE *pNode, WORD wPosX, WORD wPosY);
-	void Jump_DirLD(NODE *pNode, WORD wPosX, WORD wPosY);
-	void Jump_DirLU(NODE *pNode, WORD wPosX, WORD wPosY);
+	bool Jump_DirUU(short wInX, short wInY, short *wOutX, short *wOutY);
+	bool Jump_DirRR(short wInX, short wInY, short *wOutX, short *wOutY);
+	bool Jump_DirDD(short wInX, short wInY, short *wOutX, short *wOutY);
+	bool Jump_DirLL(short wInX, short wInY, short *wOutX, short *wOutY);
+	bool Jump_DirRU(short wInX, short wInY, short *wMiddleOutX, short *wMiddleOutY, short *wOutX, short *wOutY, BYTE *byOutDir);
+	bool Jump_DirRD(short wInX, short wInY, short *wMiddleOutX, short *wMiddleOutY, short *wOutX, short *wOutY, BYTE *byOutDir);
+	bool Jump_DirLD(short wInX, short wInY, short *wMiddleOutX, short *wMiddleOutY, short *wOutX, short *wOutY, BYTE *byOutDir);
+	bool Jump_DirLU(short wInX, short wInY, short *wMiddleOutX, short *wMiddleOutY, short *wOutX, short *wOutY, BYTE *byOutDir);
 
 	bool CheckDestination(WORD wPosX, WORD wPosY);
 
