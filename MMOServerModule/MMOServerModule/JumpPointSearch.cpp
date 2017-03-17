@@ -88,6 +88,23 @@ void CJumpPointSearch::SetFixedObstacle(unsigned short shX, unsigned short shY)
 
 bool CJumpPointSearch::FindPath(WORD wStartX, WORD wStartY, WORD wEndX, WORD wEndY, PATH *pOut, int *iOutCount)
 {
+	if (NULL == this->map)
+	{
+		return false;
+	}
+
+	if (en_TILE_FIX_OBSTACLE == this->map[wStartY][wStartX])
+	{
+		SYSLOG(L"SYSTEM", LOG::LEVEL_DEBUG, L" [JPS] wrong start position");
+		return false;
+	}
+
+	if (en_TILE_FIX_OBSTACLE == this->map[wEndY][wEndX])
+	{
+		SYSLOG(L"SYSTEM", LOG::LEVEL_DEBUG, L" [JPS] wrong end position");
+		return false;
+	}
+
 	bool bResult = false;
 
 	this->_wStartX = wStartX;
@@ -98,7 +115,7 @@ bool CJumpPointSearch::FindPath(WORD wStartX, WORD wStartY, WORD wEndX, WORD wEn
 	// 시작점 노드
 	this->CreateNode(NULL, wStartX, wStartY, en_DIR_NN);
 
-	while (this->_openList.size())
+	for (int i = 0; i < dfPATH_OPEN_MAX; ++i)
 	{
 		// 정렬이 되어있다는 전제
 		auto iter = this->_openList.begin();
@@ -113,9 +130,9 @@ bool CJumpPointSearch::FindPath(WORD wStartX, WORD wStartY, WORD wEndX, WORD wEn
 
 		this->Jump(pNode, pNode->_byDir);
 
-		// 정렬이 되었다는 전제
+		// closeList에 넣는건 그냥 넣어도 됨
 		this->_closeList.push_back((*iter));
-		this->_openList.pop_front();
+		this->_openList.erase(iter);
 	}
 
 	return false;
@@ -147,6 +164,7 @@ CJumpPointSearch::NODE* CJumpPointSearch::CreateNode(NODE *pParents, WORD wPosX,
 	this->_openList.push_back(pNewNode);
 
 	// Fitness 값에 의한 정렬을 해줘야 한다.
+	this->_openList.sort(Compare);
 	return pNewNode;
 }
 
@@ -158,7 +176,7 @@ bool CJumpPointSearch::CheckDestination(WORD wX, WORD wY)
 		return false;
 }
 
-bool CJumpPointSearch::Jump(NODE *pNode, BYTE byDir)
+void CJumpPointSearch::Jump(NODE *pNode, BYTE byDir)
 {
 	short shOutX = -1;
 	short shOutY = -1;
@@ -372,6 +390,9 @@ bool CJumpPointSearch::Jump_DirUU(short wInX, short wInY, short *wOutX, short *w
 	{
 		wY--;
 
+		if (!this->CheckRange(wX, wY))
+			break;
+
 		if ((0 > (wY - 1)) || (en_TILE_FIX_OBSTACLE == map[wY][wX]))
 			break;
 
@@ -444,6 +465,9 @@ bool CJumpPointSearch::Jump_DirRR(short wInX, short wInY, short *wOutX, short *w
 	while (true)
 	{
 		wX++;
+
+		if (!this->CheckRange(wX, wY))
+			break;
 
 		if (((this->_width - 1) < (wX + 1)) || en_TILE_FIX_OBSTACLE == map[wY][wX])
 			break;
@@ -518,6 +542,9 @@ bool CJumpPointSearch::Jump_DirDD(short wInX, short wInY, short *wOutX, short *w
 	{
 		wY++;
 
+		if (!this->CheckRange(wX, wY))
+			break;
+
 		if (((this->_height - 1) < (wY + 1)) || (en_TILE_FIX_OBSTACLE == map[wY][wX]))
 			break;
 
@@ -590,6 +617,9 @@ bool CJumpPointSearch::Jump_DirLL(short wInX, short wInY, short *wOutX, short *w
 	while (true)
 	{
 		wX--;
+
+		if (!this->CheckRange(wX, wY))
+			break;
 
 		if ((0 > (wX - 1)) || (en_TILE_FIX_OBSTACLE == map[wY][wX]))
 			break;
@@ -822,22 +852,59 @@ bool CJumpPointSearch::Jump_DirLU(short wInX, short wInY, short *wMiddleOutX, sh
 	return false;
 }
 
+bool CJumpPointSearch::CheckRange(short shX, short shY)
+{
+	if ((0 > shX) || ((this->_width - 1) < shX) || (0 > shY) || ((this->_height - 1) < shY))
+		return false;
+	else
+		return true;
+}
+
+//bool CJumpPointSearch::Compare(const NODE &a, const NODE &b)
+//{
+//	return a._iFitness < b._iFitness;
+//}
 
 void CJumpPointSearch::CompleteFind(NODE *pNode, PATH *pOut, int *iOutCount)
 {
 	NODE *pCurr = pNode;
 	int iCnt = 0;
 
+	std::stack<NODE *> stack;
+	while (NULL != pCurr->pParent)
+	{
+		stack.push(pCurr);
+		pCurr = pCurr->pParent;
+	}
+
 	for (int iCnt = 0; iCnt < dfPATH_POINT_MAX; ++iCnt)
 	{
-		if (NULL == pCurr->pParent)
+		if (stack.empty())
 			break;
+
+		pCurr = stack.top();
 
 		pOut[iCnt].X = TILE_to_POS_X(pCurr->_wPosX);		// 이거 클라이언트 좌표로 변환해야함
 		pOut[iCnt].Y = TILE_to_POS_Y(pCurr->_wPosY);		// 이거 클라이언트 좌표로 변환해야함
 
-		iCnt++;
+		stack.pop();
 	}
 
 	*iOutCount = iCnt;
+
+	auto iter = _openList.begin();
+	for (iter; iter != _openList.end(); ++iter)
+		this->_nodePool.Free((*iter));
+
+	for (iter = _closeList.begin(); iter != _closeList.end(); ++iter)
+		this->_nodePool.Free((*iter));
+
+	this->_openList.clear();
+	this->_closeList.clear();
+	return;
+}
+
+bool Compare(CJumpPointSearch::NODE *a, CJumpPointSearch::NODE *b)
+{
+	return a->_iFitness < b->_iFitness;
 }

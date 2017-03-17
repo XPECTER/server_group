@@ -1,5 +1,11 @@
 #pragma once
 
+struct PATH
+{
+	float	X;		// 클라이언트 좌표
+	float	Y;		// 클라이언트 좌표
+};
+
 class CJumpPointSearch
 {
 private:
@@ -25,13 +31,9 @@ private:
 	};
 
 public:
-	struct PATH
-	{
-		float	X;		// 클라이언트 좌표
-		float	Y;		// 클라이언트 좌표
-	};
+	
 
-private:
+public:
 	typedef struct stJUMP_NODE
 	{
 		stJUMP_NODE *pParent;
@@ -44,6 +46,11 @@ private:
 		WORD _wPosY;							// 노드의 Y좌표
 
 		BYTE _byDir;                       // 노드의 방향
+
+		bool operator<(const stJUMP_NODE &node) const
+		{
+			return this->_iFitness < node._iFitness;
+		}
 	}NODE;
 
 public:
@@ -56,13 +63,12 @@ public:
 	
 	bool FindPath(WORD wStartX, WORD wStartY, WORD wEndX, WORD wEndY, PATH *pOut, int *iOutCount);	// 길 찾기
 
-
 private:
 	void SetFixedObstacle(WORD wX, WORD wY);
 
 	NODE* CreateNode(NODE *pParents, WORD wPosX, WORD wPosY, BYTE byDir);
 
-	bool Jump(NODE *pNode, BYTE byDir);
+	void Jump(NODE *pNode, BYTE byDir);
 	bool Jump_DirUU(short wInX, short wInY, short *wOutX, short *wOutY);
 	bool Jump_DirRR(short wInX, short wInY, short *wOutX, short *wOutY);
 	bool Jump_DirDD(short wInX, short wInY, short *wOutX, short *wOutY);
@@ -71,6 +77,9 @@ private:
 	bool Jump_DirRD(short wInX, short wInY, short *wMiddleOutX, short *wMiddleOutY, short *wOutX, short *wOutY, BYTE *byOutDir);
 	bool Jump_DirLD(short wInX, short wInY, short *wMiddleOutX, short *wMiddleOutY, short *wOutX, short *wOutY, BYTE *byOutDir);
 	bool Jump_DirLU(short wInX, short wInY, short *wMiddleOutX, short *wMiddleOutY, short *wOutX, short *wOutY, BYTE *byOutDir);
+
+	//bool Compare(const NODE &a, const NODE &b);
+	bool CheckRange(short shX, short shY);
 
 	bool CheckDestination(WORD wPosX, WORD wPosY);
 
@@ -93,3 +102,5 @@ private:
 
 	int **map;
 };
+
+bool Compare(CJumpPointSearch::NODE *a, CJumpPointSearch::NODE *b);

@@ -30,11 +30,12 @@ int _tmain(int argc, _TCHAR* argv[])
 	field.GetTileObject(0, 0, &list);*/
 
 	// 점프 포인트 서치 테스트 코드
-	CJumpPointSearch jps(600, 200);		// 서버에서 사용할 크기이다. 클라이언트 맵의 X2배씩
-	jps.JumpPointSearch_Init();
-	jps.LoadTextMap(L"Map.txt");
-	int out = 0;
-	jps.FindPath(4, 20, 4, 10, NULL, &out);
+	//CJumpPointSearch jps(600, 200);		// 서버에서 사용할 크기이다. 클라이언트 맵의 X2배씩
+	//jps.JumpPointSearch_Init();
+	//jps.LoadTextMap(L"Map.txt");
+	//int out = 0;
+	//PATH path[30] = { 0, };
+	//jps.FindPath(4, 20, 96, 34, path, &out);
 
 
 	//////////////////////////////////////////////////////////

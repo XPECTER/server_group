@@ -119,6 +119,9 @@ private:
 	// 데이터베이스 메시지 큐
 	CLockFreeQueue<st_DBWRITER_MSG *> _databaseMsgQueue;
 
+	// 길찾기 
+	CJumpPointSearch *_jps;
+
 	//모니터링 용도
 public:
 	long _iDatabaseWriteTPS;

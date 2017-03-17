@@ -21,6 +21,7 @@
 #include <map>
 #include <vector>
 #include <list>
+#include <stack>
 
 #include <my_global.h>
 #include <mysql.h>

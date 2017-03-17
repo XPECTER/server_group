@@ -338,6 +338,11 @@ CGameServer::CGameServer(int iClientMax) : CMMOServer(iClientMax)
 	// GameTh 하트비트 용도
 	this->_updateTick = time(NULL);
 
+	// JPS
+	this->_jps = new CJumpPointSearch(dfMAP_TILE_X_MAX, dfMAP_TILE_Y_MAX);
+	this->_jps->JumpPointSearch_Init();
+	this->_jps->LoadTextMap(L"Map.txt");
+
 	// 모니터링 변수
 	this->_iDatabaseWriteTPS = 0;
 	this->_iDatabaseWriteCounter = 0;
