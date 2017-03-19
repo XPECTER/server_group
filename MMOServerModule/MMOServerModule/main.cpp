@@ -30,12 +30,12 @@ int _tmain(int argc, _TCHAR* argv[])
 	field.GetTileObject(0, 0, &list);*/
 
 	// 점프 포인트 서치 테스트 코드
-	//CJumpPointSearch jps(600, 200);		// 서버에서 사용할 크기이다. 클라이언트 맵의 X2배씩
-	//jps.JumpPointSearch_Init();
-	//jps.LoadTextMap(L"Map.txt");
-	//int out = 0;
-	//PATH path[30] = { 0, };
-	//jps.FindPath(4, 20, 96, 34, path, &out);
+	CJumpPointSearch jps(600, 200);		// 서버에서 사용할 크기이다. 클라이언트 맵의 X2배씩
+	jps.JumpPointSearch_Init();
+	jps.LoadTextMap(L"Map.txt");
+	int out = 0;
+	PATH path[30] = { 0, };
+	jps.FindPath(262, 172, 221, 164, path, &out);
 
 
 	//////////////////////////////////////////////////////////
@@ -57,11 +57,10 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	CGameServer GameServer(g_Config.iClientMax);
 	g_pGameServer = &GameServer;
-	//g_pGameServer->Start(g_Config.szNetBindIP, g_Config.iNetBindPort, g_Config.bNetNagleOpt, g_Config.iNetThreadNum);
 
 	while (true)
 	{
-		g_pGameServer->Start();
+		GameServer.Start();
 		KeyProcess();
 
 		wprintf_s(L"SERVER ON TIME : [%04d-%02d-%02d %02d:%02d:%02d]\tLoop : %I64u\n", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec, iLoop);

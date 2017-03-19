@@ -877,7 +877,7 @@ void CJumpPointSearch::CompleteFind(NODE *pNode, PATH *pOut, int *iOutCount)
 		pCurr = pCurr->pParent;
 	}
 
-	for (int iCnt = 0; iCnt < dfPATH_POINT_MAX; ++iCnt)
+	for (iCnt; iCnt < dfPATH_POINT_MAX; ++iCnt)
 	{
 		if (stack.empty())
 			break;
@@ -890,6 +890,7 @@ void CJumpPointSearch::CompleteFind(NODE *pNode, PATH *pOut, int *iOutCount)
 		stack.pop();
 	}
 
+	// TEST할 땐 이상 없었는데??????
 	*iOutCount = iCnt;
 
 	auto iter = _openList.begin();

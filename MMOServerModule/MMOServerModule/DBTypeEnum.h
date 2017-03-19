@@ -11,7 +11,9 @@ enum en_DB_ACTION_TYPE
 	enDB_ACCOUNT_READ_LOGIN_SESSION	= 0,			// accountdb 에서 로그인 세션키 및 정보 확인 (로그인서버에서 사용)
 	enDB_ACCOUNT_READ_USER,							// accountdb 에서 회원 정보 얻기 & status login 상태로
 
+	enDB_ACCOUNT_READ_STATUS_INIT,					// 게임서버가 켜질 때 모든 유저의 status를 로그아웃 상태로 변경
 	enDB_ACCOUNT_WRITE_STATUS_LOGOUT				// 플레이어 로그아웃시 status 를 로그아웃 상태로 변경
+
 };
 
 
@@ -60,6 +62,12 @@ struct stDB_ACCOUNT_READ_USER_out
 };
 
 
+// enDB_ACCOUNT_READ_STATUS_INIT ----------------------------------------------------------
+struct stenDB_ACCOUNT_READ_STATUS_INIT
+{
+
+};
+
 
 // enDB_ACCOUNT_WRITE_STATUS_LOGOUT ----------------------------------------------------------
 
@@ -89,7 +97,6 @@ enum en_DB_TYPE
 #define dfDBWRITER_TYPE_ACCOUNT		1		// AccountDB 
 #define dfDBWRITER_TYPE_GAME		2		// GameDB
 #define dfDBWRITER_TYPE_HEARTBEAT	3		// DBThread Heartbeat
-#define dfDBWRITER_TYPE
 
 //--------------------------------------------------------
 // DB 저장 메시지 통합본.

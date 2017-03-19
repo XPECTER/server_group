@@ -1,7 +1,5 @@
 #pragma once
 
-typedef __int64 CLIENT_ID;
-
 #define MAKECLIENTID(index, id) (((__int64)index << 48) | id)
 #define EXTRACTCLIENTINDEX(ClientID) ((__int64)ClientID >> 48)
 #define EXTRACTCLIENTID(ClientID) ((__int64)ClientID & 0x00FFFFFF)
@@ -11,6 +9,8 @@ typedef __int64 CLIENT_ID;
 #define dfTHREAD_UPDATE_TICK_AUTH 3
 #define dfTHREAD_UPDATE_TICK_GAME 10
 #define dfTHREAD_UPDATE_TICK_SEND 1
+
+typedef __int64 CLIENT_ID;
 
 class CMMOServer
 {
@@ -86,7 +86,7 @@ protected:
 
 		friend class CMMOServer;
 	};
-
+	
 	
 
 public:

@@ -8,8 +8,6 @@
 #include "JumpPointSearch.h"
 #include "DBConnector.h"
 
-#define dfDUMMY_ACCOUNTNO_LIMIT 999999
-
 #define dfAUTH_PACKET_PROC_REPEAT 1
 #define dfGAME_PACKET_PROC_REPEAT 3
 
@@ -22,6 +20,7 @@
 #define dfGAMETHREAD_HEARTBEAT_TICK 3000
 #define dfDATABASETHREAD_HEARTBEAT_TICK 3000
 #define dfCLIENT_HEARTBEAT_TICK 40000
+
 
 struct st_SESSION_KEY
 {
@@ -51,24 +50,97 @@ protected:
 		virtual bool OnGame_ClientLeave(void) override;
 		virtual bool OnGame_ClientRelease(void) override;
 
+		// 패킷 처리부
 	private:
+		//////////////////////////////////////////////////////////
+		// 로그인 패킷 처리부
 		void PacketProc_Login(CPacket *pRecvPacket);
+
+		// 로그인 패킷 처리부에서 응답 패킷 만들 때 사용
 		void MakePacket_ResLogin(CPacket *pSendPacket, BYTE byStatus, __int64 iAccountNo);
-	
+		//////////////////////////////////////////////////////////
+
+		//////////////////////////////////////////////////////////
+		// 캐릭터 선택 패킷 처리부
 		void PacketProc_CharacterSelect(CPacket *pRecvPacket);
+
+		// 캐릭터 선택 패킷 처리부에서 응답 패킷 만들 때 사용
 		void MakePacket_ResCharacterSelect(CPacket *pSendPacket, BYTE byStatus);
+		//////////////////////////////////////////////////////////
 
+		//////////////////////////////////////////////////////////
+		// 에코 패킷 처리부
 		void PacketProc_ReqEcho(CPacket *pRecvPacket);
-		void MakePacket_ResEcho(CPacket *pSendPacket, __int64 iAccountNo, __int64 SendTick);
 
+		// 에코 패킷 처리부에서 응답 패킷 만들 때 사용
+		void MakePacket_ResEcho(CPacket *pSendPacket, __int64 iAccountNo, __int64 SendTick);
+		//////////////////////////////////////////////////////////
+
+		// 하트비트 처리
 		void PacketProc_ClientHeartBeat(CPacket *pRecvPacket);
 	
+		//////////////////////////////////////////////////////////
+		// 캐릭터 생성 패킷 보내기
+		void SendPacket_CreateCharacter(void);
+
+		// 캐릭터 생성 패킷 만들기
+		void MakePacket_CreateCharacter(CPacket *pSendPacket, __int64 clientID, BYTE characterType, wchar_t *szNickname, float PosX, float PosY, WORD rotation, int hp, BYTE party);
+		//////////////////////////////////////////////////////////
+
+		//////////////////////////////////////////////////////////
+		// 캐릭터 이동 패킷 처리부
+		void PacketProc_MoveCharacter(CPacket *pRecvPacket);
+
+		// 캐릭터 이동 패킷 처리부에서 응답 패킷 만들 때 사용
+		void MakePacket_ResMoveCharacter(CPacket *pSendPacket, __int64 clientID, BYTE pathCount, PATH *pPath);
+		//////////////////////////////////////////////////////////
+
+		//////////////////////////////////////////////////////////
+		// 캐릭터 정지 요청 패킷 처리부
+		void PacketProc_StopCharacter(CPacket *pRecvPacket);
+
+		// 캐릭터 정지 요청 응답 패킷 
+		void MakePacket_StopCharacter(CPacket *pSendPacket, __int64 clientID, float PosX, float PosY, WORD dir);
+		//////////////////////////////////////////////////////////
+
+		//////////////////////////////////////////////////////////
+		// Sync 패킷 보내기
+		void SendPacket_Sync(void);
+
+		// Sync 패킷 만들기
+		void MakePacket_Sync(CPacket *pSendPacket, __int64 clientID, short tileX, short tileY);
+		//////////////////////////////////////////////////////////
+
+		// 기타 필요한 로직
+	private:
+		bool CheckErrorRange(float PosX, float PosY);
+
 	private:
 		CGameServer *_pGameServer;
-
-		BYTE _byParty;
+		
 		__int64 _accountNo;
 		__int64 _heartBeatTick;
+
+		// AuthTh에서 세팅
+		wchar_t	_szNickname[dfNICK_MAX_LEN];			// 닉네임
+		
+		BYTE	_byParty;				// 파티 번호 (1번 또는 2번)
+		BYTE	_characterType;			// 캐릭터 타입 (1번 파티는 1, 2, 3 / 2번 파티는 3, 4, 5)
+		
+
+		// GameTh에서 세팅
+		short	_serverX;					// 서버 X 좌표
+		short	_serverY;					// 서버 Y 좌표
+		float	_clientPosX;				// 클라이언트 X 좌표
+		float	_clientPosY;				// 클라이언트 Y 좌표
+		short	_sectorX;					// 섹터 X 좌표
+		short	_sectorY;					// 섹터 Y 좌표
+
+		WORD	_rotation;					// 방향
+
+		int		_iHP;						// 체력
+
+		PATH	_path[dfPATH_POINT_MAX];	// 이동할 경로
 	};
 
 public:

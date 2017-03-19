@@ -338,6 +338,44 @@ void AccountDB::QueryDB(en_DB_ACTION_TYPE type, PVOID pIn, PVOID pOut)
 
 		/////////////////////////////////////////////////////////////////////
 		//
+		//	enDB_ACCOUNT_READ_STATUS_INIT
+		//	
+		//	게임 서버를 켤 때 `accountdb`.`status`의 status 항목을 모두 0으로
+		//	초기화 한다.
+		//
+		/////////////////////////////////////////////////////////////////////
+		case enDB_ACCOUNT_READ_STATUS_INIT:
+		{
+			if (!this->Query("UPDATE `accountdb`.`status` SET status = 0"))
+			{
+				if (1175 == this->GetLastError())
+				{
+					if (!this->Query("set sql_safe_updates = 0"))
+					{
+						SYSLOG(L"DATABASE", LOG::LEVEL_ERROR, L"Query Failed");
+						CCrashDump::Crash();
+					}
+					else
+					{
+						if (!this->Query("UPDATE `accountdb`.`status` SET status = 0"))
+						{
+							SYSLOG(L"DATABASE", LOG::LEVEL_ERROR, L"Query Failed");
+							CCrashDump::Crash();
+						}
+					}
+				}
+				else
+				{
+					SYSLOG(L"DATABASE", LOG::LEVEL_ERROR, L"Query Failed");
+					CCrashDump::Crash();
+				}
+			}
+			break;
+		}
+
+
+		/////////////////////////////////////////////////////////////////////
+		//
 		//	enDB_ACCOUNT_WRITE_STATUS_LOGOUT
 		//	
 		//	유저가 게임에서 나갈 때 `accountdb`.`status`의 status 항목을

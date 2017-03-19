@@ -184,6 +184,10 @@ public:
 	// unsigned int
 	CPacket& operator << (unsigned int uValue);
 	CPacket& operator >> (unsigned int &uValue);
+
+	// float
+	CPacket& operator << (float fValue);
+	CPacket& operator >> (float &fValue);
 	
 	// double
 	CPacket& operator << (double dValue);

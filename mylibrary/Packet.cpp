@@ -466,6 +466,22 @@ CPacket& CPacket::operator >> (unsigned int &iValue)
 
 
 ///////////////////////////////////////////////////
+// 연산자 오버로딩 : float
+///////////////////////////////////////////////////
+CPacket& CPacket::operator << (float fValue)
+{
+	Enqueue(reinterpret_cast<char *>(&fValue), sizeof(float));
+	return *this;
+}
+
+CPacket& CPacket::operator >> (float &fValue)
+{
+	Dequeue(reinterpret_cast<char *>(&fValue), sizeof(float));
+	return *this;
+}
+
+
+///////////////////////////////////////////////////
 // 연산자 오버로딩 : double
 ///////////////////////////////////////////////////
 CPacket& CPacket::operator << (double dValue)

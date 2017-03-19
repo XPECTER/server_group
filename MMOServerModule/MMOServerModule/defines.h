@@ -243,7 +243,7 @@
 //	bottom		10.0f		20	-> 190
 //
 //---------------------------------------------
-#define dfCREATE_PLAYER_X		(85 + (rand() % 21))
+#define dfCREATE_PLAYER_X		(85 + (rand() % 21))			// 중립캐릭터인듯?
 #define dfCREATE_PLAYER_Y		(93 + (rand() % 31))
 
 #define dfCREATE_PLAYER_X_PARTY1		(68 + (rand() % 70))
