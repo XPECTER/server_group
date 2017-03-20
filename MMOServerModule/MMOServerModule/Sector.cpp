@@ -50,6 +50,9 @@ bool CGameServer::CSector::InsertPlayer_Sector(int iSectorX, int iSectorY, CLIEN
 
 bool CGameServer::CSector::DeletePlayer_Sector(int iSectorX, int iSectorY, CLIENT_ID clientID, CPlayer *pPlayer)
 {
+	if ((-1) == iSectorX && (-1) == iSectorY)
+		return true;
+
 	if (!this->CheckRange(iSectorX, iSectorY))
 		return false;
 
@@ -186,4 +189,12 @@ void CGameServer::CSector::GetUpdateSector(CGameServer::stAROUND_SECTOR *beforeS
 		(*afterSector)._around[i] = addSector._around[i];
 
 	return;
+}
+
+std::map<CLIENT_ID, CGameServer::CPlayer *>* CGameServer::CSector::GetList(int iSectorX, int iSectorY)
+{
+	if (this->CheckRange(iSectorX, iSectorY))
+		return &this->_map[iSectorY][iSectorX];
+	else
+		return NULL;
 }

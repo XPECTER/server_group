@@ -131,16 +131,19 @@ bool CGameServer::CPlayer::OnGame_ClientJoin(void)
 	
 	this->_clientPosX = TILE_to_POS_X(this->_serverX);
 	this->_clientPosY = TILE_to_POS_Y(this->_serverY);
+	this->_sectorX = TILE_to_SECTOR_X(this->_serverX);
+	this->_sectorY = TILE_to_SECTOR_Y(this->_serverY);
 
 	this->_rotation = ((rand() % 8) + 1);
 	
 	this->_iHP = dfHP_MAX;
 
 	// 여기서 내 주변 섹터 유저에게도 날려줘야 한다.
-	this->_pGameServer->_sector->MoveSector(-1, -1, TILE_to_SECTOR_X(this->_serverX), TILE_to_SECTOR_Y(this->_serverY), this->_clientID, this);
+	this->_pGameServer->_sector->MoveSector(-1, -1, this->_sectorX, this->_sectorY, this->_clientID, this);
 	this->_pGameServer->_field->AddTileObject(this->_serverX, this->_serverY, this->_clientID);
 
-	SendPacket_CreateCharacter();
+	SendPacket_NewCreateCharacter();
+
 	return true;
 }
 
@@ -384,12 +387,23 @@ void CGameServer::CPlayer::PacketProc_ClientHeartBeat(CPacket *pRecvPacket)
 	return;
 }
 
-void CGameServer::CPlayer::SendPacket_CreateCharacter(void)
+void CGameServer::CPlayer::SendPacket_NewCreateCharacter(void)
 {
+	// 1. 해당 유저에게 캐릭터 생성을 보내고
 	CPacket *pSendPacket = CPacket::Alloc();
 	MakePacket_CreateCharacter(pSendPacket, this->_clientID, this->_characterType, this->_szNickname, this->_clientPosX, this->_clientPosY, this->_rotation, this->_iHP, this->_byParty);
 	SendPacket(pSendPacket);
 	pSendPacket->Free();
+
+	// 2. 주변 섹터(3 X 3)에게(나를 제외하고) 해당 유저가 들어왔음을 알리고
+	pSendPacket = CPacket::Alloc();
+	MakePacket_CreateOtherCharacter(pSendPacket, this->_clientID, this->_characterType, this->_szNickname, this->_clientPosX, this->_clientPosY, this->_rotation, 1, this->_bDie, this->_iHP, this->_byParty);
+	this->_pGameServer->SendPacket_SectorAround(pSendPacket, this->_sectorX, this->_sectorY, this);
+	pSendPacket->Free();
+
+	// 3. 해당 유저에게 주변 섹터 캐릭터의 정보를 보낸다.
+	this->_pGameServer->_sector->GetList()
+
 
 	return;
 }
@@ -403,6 +417,28 @@ void CGameServer::CPlayer::MakePacket_CreateCharacter(CPacket *pSendPacket, __in
 	*pSendPacket << PosX;
 	*pSendPacket << PosY;
 	*pSendPacket << rotation;
+	*pSendPacket << (int)0;				// Cristal (사용 안함)
+	*pSendPacket << hp;		
+	*pSendPacket << (__int64)0;			// Exp (사용 안함)
+	*pSendPacket << (WORD)0;			// Level (사용 안함)
+	*pSendPacket << party;
+
+	return;
+}
+
+void CGameServer::CPlayer::MakePacket_CreateOtherCharacter(CPacket *pSendPacket, __int64 clientID, BYTE characterType, wchar_t *szNickname, float PosX, float PosY, WORD rotation, BYTE respawn, BYTE die, int hp, BYTE party)
+{
+	*pSendPacket << (WORD)en_PACKET_CS_GAME_RES_CREATE_OTHER_CHARACTER;
+	*pSendPacket << clientID;
+	*pSendPacket << characterType;
+	pSendPacket->Enqueue((char *)szNickname, dfNICK_BYTE_LEN);
+	*pSendPacket << PosX;
+	*pSendPacket << PosY;
+	*pSendPacket << rotation;
+	*pSendPacket << (WORD)0;			// Level (사용 안함)
+	*pSendPacket << respawn;			
+	*pSendPacket << (BYTE)0;			// Sit (사용 안함)
+	*pSendPacket << die;
 	*pSendPacket << hp;
 	*pSendPacket << party;
 

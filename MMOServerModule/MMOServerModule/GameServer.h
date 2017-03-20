@@ -84,11 +84,14 @@ protected:
 	
 		//////////////////////////////////////////////////////////
 		// 캐릭터 생성 패킷 보내기
-		void SendPacket_CreateCharacter(void);
+		void SendPacket_NewCreateCharacter(void);
 
 		// 캐릭터 생성 패킷 만들기
 		void MakePacket_CreateCharacter(CPacket *pSendPacket, __int64 clientID, BYTE characterType, wchar_t *szNickname, float PosX, float PosY, WORD rotation, int hp, BYTE party);
 		//////////////////////////////////////////////////////////
+
+		// 다른 캐릭터 생성 패킷 만들기
+		void MakePacket_CreateOtherCharacter(CPacket *pSendPacket, __int64 clientID, BYTE characterType, wchar_t *szNickname, float PosX, float PosY, WORD rotation, BYTE respawn, BYTE die, int hp, BYTE party);
 
 		//////////////////////////////////////////////////////////
 		// 캐릭터 이동 패킷 처리부
@@ -132,18 +135,18 @@ protected:
 		
 
 		// GameTh에서 세팅
-		short	_serverX;					// 서버 X 좌표
-		short	_serverY;					// 서버 Y 좌표
+		int		_serverX;						// 서버 X 좌표
+		int		_serverY;						// 서버 Y 좌표
 		float	_clientPosX;				// 클라이언트 X 좌표
 		float	_clientPosY;				// 클라이언트 Y 좌표
-		short	_sectorX;					// 섹터 X 좌표
-		short	_sectorY;					// 섹터 Y 좌표
+		int		_sectorX;						// 섹터 X 좌표
+		int		_sectorY;						// 섹터 Y 좌표
 
 		WORD	_rotation;					// 방향
+		PATH	_path[dfPATH_POINT_MAX];	// 이동할 경로
 
 		int		_iHP;						// 체력
-
-		PATH	_path[dfPATH_POINT_MAX];	// 이동할 경로
+		bool	_bDie;						// 사망 플래그
 	};
 
 //private:
@@ -170,6 +173,7 @@ public:
 		void GetAroundSector(int iSectorX, int iSectorY, stAROUND_SECTOR *around);
 		void GetUpdateSector(stAROUND_SECTOR *beforeSector, stAROUND_SECTOR *afterSector);
 
+		std::map<CLIENT_ID, CPlayer*>* GetList(int iSectorX, int iSectorY);
 	private:
 		bool CheckRange(int iSectorX, int iSectorY);
 
@@ -205,6 +209,9 @@ private:
 	void Schedule_SessionKey(void);
 	void Schedule_Client(void);
 
+	void SendPacket_SectorOne(CPacket *pSendPacket, int iSectorX, int iSectorY, CPlayer *pException);
+	void SendPacket_SectorAround(CPacket *pSendPacket, int iSectorX, int iSectorY, CPlayer *pException);
+
 private:
 	CLanClient_Login *_lanClient_Login;
 	CLanClient_Agent *_lanClient_Agent;
@@ -230,7 +237,6 @@ private:
 
 	// 데이터베이스 메시지 큐
 	CLockFreeQueue<st_DBWRITER_MSG *> _databaseMsgQueue;
-
 	
 	CJumpPointSearch *_jps;			// 길찾기 알고리즘
 

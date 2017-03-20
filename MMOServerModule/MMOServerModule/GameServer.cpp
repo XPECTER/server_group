@@ -298,3 +298,32 @@ bool CGameServer::DatabaseWriteThread_update(void)
 
 	return true;
 }
+
+void CGameServer::SendPacket_SectorOne(CPacket *pSendPacket, int iSectorX, int iSectorY, CPlayer *pException)
+{
+	std::map<CLIENT_ID, CPlayer*> *map = this->_sector->GetList(iSectorX, iSectorY);
+	auto iter = map->begin();
+
+	for (iter; iter != map->end(); ++iter)
+	{
+		if (pException == iter->second)
+			continue;
+
+		iter->second->SendPacket(pSendPacket);
+	}
+
+	return;
+}
+
+void CGameServer::SendPacket_SectorAround(CPacket *pSendPacket, int iSectorX, int iSectorY, CPlayer *pException)
+{
+	stAROUND_SECTOR around;
+	this->_sector->GetAroundSector(iSectorX, iSectorY, &around);
+
+	for (int i = 0; i < around._iCount; ++i)
+	{
+		this->SendPacket_SectorOne(pSendPacket, around._around[i]._iSectorX, around._around[i]._iSectorY, pException);
+	}
+
+	return;
+}

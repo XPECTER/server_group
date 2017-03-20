@@ -408,7 +408,8 @@ enum en_PACKET_TYPE
 	//		float	PosY
 	//		USHORT	Rotation
 	//		USHORT	Level
-	//		BYTE	Respawn			// 신규 생성은 이펙트 터짐.
+	//		BYTE	Respawn			// 신규 생성은 이펙트 터짐. // 신규 생성은 1
+	//								// 섹터 이동으로 생성된건 0
 	//
 	//		BYTE	Sit				// 미사용
 	//		BYTE	Die				// 미사용
