@@ -48,3 +48,5 @@
 #include "Config.h"
 #include "CommonProtocol.h"
 #include "DBTypeEnum.h"
+
+typedef __int64 CLIENT_ID;

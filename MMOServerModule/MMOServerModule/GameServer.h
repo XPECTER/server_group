@@ -40,6 +40,9 @@ protected:
 		void Player_Init(CGameServer *pGameServer);
 		void CheckHeartBeat(void);
 
+		void Action_Move();
+		void Action_Attack();
+
 	protected:
 		virtual bool OnAuth_ClientJoin(void) override;
 		virtual bool OnAuth_PacketProc(void) override;
@@ -143,6 +146,43 @@ protected:
 		PATH	_path[dfPATH_POINT_MAX];	// 이동할 경로
 	};
 
+//private:
+public:
+	struct stSECTOR_POS
+	{
+		int _iSectorX;
+		int _iSectorY;
+	};
+
+	struct stAROUND_SECTOR
+	{
+		int _iCount;
+		stSECTOR_POS _around[9];
+	};
+
+	class CSector
+	{
+	public:
+		CSector(int iWidth, int iHeight);
+		~CSector();
+
+		bool MoveSector(int iBeforeX, int iBeforeY, int iAfterX, int iAfterY, CLIENT_ID clientID, CPlayer *pPlayer);
+		void GetAroundSector(int iSectorX, int iSectorY, stAROUND_SECTOR *around);
+		void GetUpdateSector(stAROUND_SECTOR *beforeSector, stAROUND_SECTOR *afterSector);
+
+	private:
+		bool CheckRange(int iSectorX, int iSectorY);
+
+		bool InsertPlayer_Sector(int iSectorX, int iSectorY, CLIENT_ID clientID, CPlayer *pPlayer);
+		bool DeletePlayer_Sector(int iSectorX, int iSectorY, CLIENT_ID clientID, CPlayer *pPlayer);
+		
+	private:
+		int _iWidth;
+		int _iHeight;
+
+		std::map<CLIENT_ID, CPlayer*> **_map;
+	};
+
 public:
 	CGameServer(int iClientMax);
 	~CGameServer();
@@ -171,7 +211,7 @@ private:
 	CLanClient_Monitoring *_lanClient_Monitoring;
 
 	// 실제 플레이어를 생성할 배열
-	CPlayer *pPlayerArray;
+	CPlayer *_pPlayerArray;
 
 	// 로그인 서버로부터 받은 키 자료구조
 	std::map<__int64, st_SESSION_KEY *> _sessionKeyMap;
@@ -191,8 +231,12 @@ private:
 	// 데이터베이스 메시지 큐
 	CLockFreeQueue<st_DBWRITER_MSG *> _databaseMsgQueue;
 
-	// 길찾기 
-	CJumpPointSearch *_jps;
+	
+	CJumpPointSearch *_jps;			// 길찾기 알고리즘
+
+	CField<CLIENT_ID> *_field;		// ClientID를 관리하는 필드
+		
+	CSector *_sector;				// ClientID와 CPlayer *를 관리하는 Sector
 
 	//모니터링 용도
 public:

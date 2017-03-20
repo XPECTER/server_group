@@ -285,7 +285,7 @@ void AccountDB::QueryDB(en_DB_ACTION_TYPE type, PVOID pIn, PVOID pOut)
 			}
 			else
 			{
-				SYSLOG(L"DATABASE", LOG::LEVEL_ERROR, L"Query Failed");
+				SYSLOG(L"DATABASE", LOG::LEVEL_ERROR, L"Query Failed. Errno : %d", this->GetLastError());
 				CCrashDump::Crash();
 			}
 		
@@ -322,14 +322,14 @@ void AccountDB::QueryDB(en_DB_ACTION_TYPE type, PVOID pIn, PVOID pOut)
 			}
 			else
 			{
-				SYSLOG(L"DATABASE", LOG::LEVEL_ERROR, L"Query Failed");
+				SYSLOG(L"DATABASE", LOG::LEVEL_ERROR, L"Query Failed. Errno : %d", this->GetLastError());
 				CCrashDump::Crash();
 			}
 
 			// 로그인 완료로 처리하고 게임상태로 바꿈
 			if (!this->Query("UPDATE `accountdb`.`status` SET status = 1 WHERE accountno = %d", accountNo))
 			{
-				SYSLOG(L"DATABASE", LOG::LEVEL_ERROR, L"Query Failed");
+				SYSLOG(L"DATABASE", LOG::LEVEL_ERROR, L"Query Failed. Errno : %d", this->GetLastError());
 				CCrashDump::Crash();
 			}
 
@@ -352,21 +352,21 @@ void AccountDB::QueryDB(en_DB_ACTION_TYPE type, PVOID pIn, PVOID pOut)
 				{
 					if (!this->Query("set sql_safe_updates = 0"))
 					{
-						SYSLOG(L"DATABASE", LOG::LEVEL_ERROR, L"Query Failed");
+						SYSLOG(L"DATABASE", LOG::LEVEL_ERROR, L"Query Failed. Errno : %d", this->GetLastError());
 						CCrashDump::Crash();
 					}
 					else
 					{
 						if (!this->Query("UPDATE `accountdb`.`status` SET status = 0"))
 						{
-							SYSLOG(L"DATABASE", LOG::LEVEL_ERROR, L"Query Failed");
+							SYSLOG(L"DATABASE", LOG::LEVEL_ERROR, L"Query Failed. Errno : %d", this->GetLastError());
 							CCrashDump::Crash();
 						}
 					}
 				}
 				else
 				{
-					SYSLOG(L"DATABASE", LOG::LEVEL_ERROR, L"Query Failed");
+					SYSLOG(L"DATABASE", LOG::LEVEL_ERROR, L"Query Failed. Errno : %d", this->GetLastError());
 					CCrashDump::Crash();
 				}
 			}

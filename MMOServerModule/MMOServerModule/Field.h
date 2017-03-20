@@ -10,47 +10,47 @@ private:
 	}TILE;
 
 public:
-	CField(unsigned short shXTileMax, unsigned short shYTileMax)
+	CField(int iWidth, int iHeight)
 	{
-		this->_shX = shXTileMax;
-		this->_shY = shYTileMax;
+		this->_width = iWidth;
+		this->_height = iHeight;
 
 		// 鸥老 甘 积己
-		this->tileMap = new TILE*[this->_shY];
+		this->_tileMap = new TILE*[iHeight];
 
-		for (int i = 0; i < this->_shY; i++)
-			this->tileMap[i] = new TILE[this->_shX];
+		for (int i = 0; i < iHeight; i++)
+			this->_tileMap[i] = new TILE[iWidth];
 	}
 
 	~CField()
 	{
 		// 鸥老 甘 秦力
-		for (int i = 0; i < _shY; ++i)
+		for (int i = 0; i < _height; ++i)
 		{
-			delete[] this->tileMap[i];
+			delete[] this->_tileMap[i];
 		}
 
-		delete[] this->tileMap;
+		delete[] this->_tileMap;
 	}
 
-	bool AddTileObject(T content, short shX, short shY)
+	bool AddTileObject(int PosX, int PosY, T content)
 	{
-		if (!this->CheckRange(shX, shY))
+		if (!this->CheckRange(PosX, PosY))
 			return false;
 
-		if (this->CheckDuplicate(content, shX, shY))
+		if (this->CheckDuplicate(PosX, PosY, content))
 			return false;
 
-		tileMap[shY][shX].contents_list.push_back(content);
+		_tileMap[PosY][PosX].contents_list.push_back(content);
 		return true;
 	}
 
-	bool DelTileObject(T content, short shX, short shY)
+	bool DelTileObject(int PosX, int PosY, T content)
 	{
-		if (!this->CheckRange(shX, shY))
+		if (!this->CheckRange(PosX, PosY))
 			return false;
 
-		std::list<T> *list = &this->tileMap[shY][shX].contents_list;
+		std::list<T> *list = &this->_tileMap[PosY][PosX].contents_list;
 
 		for (auto iter = list->begin(); iter != list->end(); ++iter)
 		{
@@ -64,12 +64,12 @@ public:
 		return false;
 	}
 
-	bool GetTileObject(short shX, short shY, std::list<T> *outList)
+	bool GetTileObject(int PosX, int PosY, std::list<T> *outList)
 	{
-		if (!this->CheckRange(shX, shY))
+		if (!this->CheckRange(PosX, PosY))
 			return false;
 
-		std::list<T> *list = &this->tileMap[shY][shX].contents_list;
+		std::list<T> *list = &this->_tileMap[PosY][PosX].contents_list;
 
 		for (auto iter = list->begin(); iter != list->end(); ++iter)
 		{
@@ -80,17 +80,17 @@ public:
 	}
 
 private:
-	bool CheckRange(unsigned short shX, unsigned short shY)
+	bool CheckRange(int PosX, int PosY)
 	{
-		if (shX >= this->_shX || shX < 0 || shY >= this->_shY || shY < 0)
+		if (PosX >= this->_width || PosX < 0 || PosY >= this->_height || PosY < 0)
 			return false;
 
 		return true;
 	}
 
-	bool CheckDuplicate(T content, unsigned short shX, unsigned short shY)
+	bool CheckDuplicate(int PosX, int PosY, T content)
 	{
-		std::list<T> *list = &this->tileMap[shY][shX].contents_list;
+		std::list<T> *list = &this->_tileMap[PosY][PosX].contents_list;
 
 		for (auto iter = list->begin(); iter != list->end(); ++iter)
 		{
@@ -102,8 +102,8 @@ private:
 	}
 
 private:
-	unsigned short _shX;
-	unsigned short _shY;
+	int _width;
+	int _height;
 
-	TILE **tileMap;
+	TILE **_tileMap;
 };

@@ -28,16 +28,16 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	std::list<CLIENT_ID> list;
 	field.GetTileObject(0, 0, &list);*/
+	// 완료
 
 	// 점프 포인트 서치 테스트 코드
-	CJumpPointSearch jps(600, 200);		// 서버에서 사용할 크기이다. 클라이언트 맵의 X2배씩
-	jps.JumpPointSearch_Init();
-	jps.LoadTextMap(L"Map.txt");
-	int out = 0;
-	PATH path[30] = { 0, };
-	jps.FindPath(262, 172, 221, 164, path, &out);
-
-
+	//CJumpPointSearch jps(600, 200);		// 서버에서 사용할 크기이다. 클라이언트 맵의 X2배씩
+	//jps.JumpPointSearch_Init();
+	//jps.LoadTextMap(L"Map.txt");
+	//int out = 0;
+	//PATH path[30] = { 0, };
+	//jps.FindPath(262, 172, 221, 164, path, &out);
+	// 완료
 	//////////////////////////////////////////////////////////
 	timeBeginPeriod(1);
 
@@ -57,6 +57,16 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	CGameServer GameServer(g_Config.iClientMax);
 	g_pGameServer = &GameServer;
+
+	//////////////////////////////////////////////////////////
+	// 섹터 테스트 코드 ( public으로 풀어야함)
+	/*CGameServer::stAROUND_SECTOR before, after;
+
+	GameServer._sector->GetAroundSector(3, 3, &before);
+	GameServer._sector->GetAroundSector(4, 3, &after);
+	GameServer._sector->GetUpdateSector(&before, &after);*/
+	//완료
+	//////////////////////////////////////////////////////////
 
 	while (true)
 	{

@@ -24,18 +24,24 @@ CGameServer::CGameServer(int iClientMax) : CMMOServer(iClientMax)
 	this->_jps->JumpPointSearch_Init();
 	this->_jps->LoadTextMap(L"Map.txt");
 
+	// Field
+	this->_field = new CField<CLIENT_ID>(dfMAP_TILE_X_MAX, dfMAP_TILE_Y_MAX);
+
+	// Sector
+	this->_sector = new CSector(dfSECTOR_X_MAX, dfSECTOR_Y_MAX);
+
 	// 모니터링 변수
 	this->_iDatabaseWriteTPS = 0;
 	this->_iDatabaseWriteCounter = 0;
 
 #pragma region player
 	// 플레이어 배열 할당
-	this->pPlayerArray = new CPlayer[iClientMax];
+	this->_pPlayerArray = new CPlayer[iClientMax];
 
 	for (int i = 0; i < iClientMax; ++i)
 	{
-		this->pPlayerArray[i].Player_Init(this);
-		this->SetSessionArray(i, (void *)&this->pPlayerArray[i]);
+		this->_pPlayerArray[i].Player_Init(this);
+		this->SetSessionArray(i, (void *)&this->_pPlayerArray[i]);
 	}
 #pragma endregion player
 
@@ -95,6 +101,12 @@ void CGameServer::OnGame_Update(void)
 {
 	if (time(NULL) - this->_updateTick > dfGAMETHREAD_HEARTBEAT_TICK)
 		this->_lanClient_Login->SendPacket_HeartBeat(dfTHREAD_TYPE_GAME);
+
+	//for (int iCnt = 0; iCnt < this->_iClientMax; ++iCnt)
+	//{
+	//	//this->_pPlayerArray[iCnt].;
+	//}
+	
 	return;
 }
 
@@ -178,7 +190,7 @@ void CGameServer::Schedule_Client(void)
 
 	for (int i = 0; i < _iClientMax; ++i)
 	{
-		pPlayer = &pPlayerArray[i];
+		pPlayer = &_pPlayerArray[i];
 
 		if (CSession::MODE_AUTH == pPlayer->_iSessionMode || CSession::MODE_GAME == pPlayer->_iSessionMode)
 			pPlayer->CheckHeartBeat();

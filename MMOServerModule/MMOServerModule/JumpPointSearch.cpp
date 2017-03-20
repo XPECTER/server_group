@@ -884,13 +884,12 @@ void CJumpPointSearch::CompleteFind(NODE *pNode, PATH *pOut, int *iOutCount)
 
 		pCurr = stack.top();
 
-		pOut[iCnt].X = TILE_to_POS_X(pCurr->_wPosX);		// 이거 클라이언트 좌표로 변환해야함
-		pOut[iCnt].Y = TILE_to_POS_Y(pCurr->_wPosY);		// 이거 클라이언트 좌표로 변환해야함
+		pOut[iCnt].X = TILE_to_POS_X(pCurr->_wPosX);
+		pOut[iCnt].Y = TILE_to_POS_Y(pCurr->_wPosY);
 
 		stack.pop();
 	}
 
-	// TEST할 땐 이상 없었는데??????
 	*iOutCount = iCnt;
 
 	auto iter = _openList.begin();

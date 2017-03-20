@@ -39,6 +39,16 @@ void CGameServer::CPlayer::CheckHeartBeat(void)
 	return;
 }
 
+void CGameServer::CPlayer::Action_Move()
+{
+
+}
+
+void CGameServer::CPlayer::Action_Attack()
+{
+	return;
+}
+
 bool CGameServer::CPlayer::OnAuth_ClientJoin(void)
 {
 	return true;
@@ -127,6 +137,9 @@ bool CGameServer::CPlayer::OnGame_ClientJoin(void)
 	this->_iHP = dfHP_MAX;
 
 	// 여기서 내 주변 섹터 유저에게도 날려줘야 한다.
+	this->_pGameServer->_sector->MoveSector(-1, -1, TILE_to_SECTOR_X(this->_serverX), TILE_to_SECTOR_Y(this->_serverY), this->_clientID, this);
+	this->_pGameServer->_field->AddTileObject(this->_serverX, this->_serverY, this->_clientID);
+
 	SendPacket_CreateCharacter();
 	return true;
 }

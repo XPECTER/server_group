@@ -10,7 +10,7 @@
 #define dfTHREAD_UPDATE_TICK_GAME 10
 #define dfTHREAD_UPDATE_TICK_SEND 1
 
-typedef __int64 CLIENT_ID;
+
 
 class CMMOServer
 {
