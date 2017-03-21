@@ -295,7 +295,8 @@ enum en_DIRECTION
 	eMOVE_DD,
 	eMOVE_LD,
 	eMOVE_LL,
-	eMOVE_LU
+	eMOVE_LU,
+	eMOVE_MAX = eMOVE_LU,
 };
 
 //---------------------------------------------

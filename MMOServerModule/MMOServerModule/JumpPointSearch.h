@@ -42,8 +42,8 @@ public:
 		int _iHeuristic;							// Heuristic. 목적지까지의 거리
 		int _iFitness;							// Fitness. G와 H를 더한 값
 
-		WORD _wPosX;							// 노드의 X좌표
-		WORD _wPosY;							// 노드의 Y좌표
+		int _iPosX;							// 노드의 X좌표
+		int _iPosY;							// 노드의 Y좌표
 
 		BYTE _byDir;                       // 노드의 방향
 
@@ -59,29 +59,29 @@ public:
 
 	
 	void JumpPointSearch_Init(void);			// 객체를 사용하기 위한 세팅
-	bool LoadTextMap(wchar_t *szFileName);		// 맵 텍스트 파일 로드
+	bool LoadTextMap(wchar_t *szFileName, char *obstacle);		// 맵 텍스트 파일 로드
 	
-	bool FindPath(WORD wStartX, WORD wStartY, WORD wEndX, WORD wEndY, PATH *pOut, int *iOutCount);	// 길 찾기
+	bool FindPath(int iStartX, int iStartY, int iEndX, int iEndY, PATH *pOut, int *iOutCount);	// 길 찾기
 
 private:
-	void SetFixedObstacle(WORD wX, WORD wY);
+	void SetTileProperty(int iX, int iY, en_TILE_PROPERTY type);
 
-	NODE* CreateNode(NODE *pParents, WORD wPosX, WORD wPosY, BYTE byDir);
+	NODE* CreateNode(NODE *pParents, int iPosX, int iPosY, BYTE byDir);
 
 	void Jump(NODE *pNode, BYTE byDir);
-	bool Jump_DirUU(short wInX, short wInY, short *wOutX, short *wOutY);
-	bool Jump_DirRR(short wInX, short wInY, short *wOutX, short *wOutY);
-	bool Jump_DirDD(short wInX, short wInY, short *wOutX, short *wOutY);
-	bool Jump_DirLL(short wInX, short wInY, short *wOutX, short *wOutY);
-	bool Jump_DirRU(short wInX, short wInY, short *wMiddleOutX, short *wMiddleOutY, short *wOutX, short *wOutY, BYTE *byOutDir);
-	bool Jump_DirRD(short wInX, short wInY, short *wMiddleOutX, short *wMiddleOutY, short *wOutX, short *wOutY, BYTE *byOutDir);
-	bool Jump_DirLD(short wInX, short wInY, short *wMiddleOutX, short *wMiddleOutY, short *wOutX, short *wOutY, BYTE *byOutDir);
-	bool Jump_DirLU(short wInX, short wInY, short *wMiddleOutX, short *wMiddleOutY, short *wOutX, short *wOutY, BYTE *byOutDir);
+	bool Jump_DirUU(int iInX, int iInY, int *iOutX, int *iOutY);
+	bool Jump_DirRR(int iInX, int iInY, int *iOutX, int *iOutY);
+	bool Jump_DirDD(int iInX, int iInY, int *iOutX, int *iOutY);
+	bool Jump_DirLL(int iInX, int iInY, int *iOutX, int *iOutY);
+	bool Jump_DirRU(int iInX, int iInY, int *iMiddleOutX, int *iMiddleOutY, int *iOutX, int *iOutY, BYTE *byOutDir);
+	bool Jump_DirRD(int iInX, int iInY, int *iMiddleOutX, int *iMiddleOutY, int *iOutX, int *iOutY, BYTE *byOutDir);
+	bool Jump_DirLD(int iInX, int iInY, int *iMiddleOutX, int *iMiddleOutY, int *iOutX, int *iOutY, BYTE *byOutDir);
+	bool Jump_DirLU(int iInX, int iInY, int *iMiddleOutX, int *iMiddleOutY, int *iOutX, int *iOutY, BYTE *byOutDir);
 
 	//bool Compare(const NODE &a, const NODE &b);
-	bool CheckRange(short shX, short shY);
+	bool CheckRange(int iPosX, int iPosY);
 
-	bool CheckDestination(WORD wPosX, WORD wPosY);
+	bool CheckDestination(int iPosX, int iPosY);
 
 	void CompleteFind(NODE *pNode, PATH *pOut, int *iOutCount);
 
@@ -91,14 +91,14 @@ private:
 	std::list<NODE*> _openList;
 	std::list<NODE*> _closeList;
 
-	WORD _width;
-	WORD _height;
+	int _width;
+	int _height;
 
-	WORD _wStartX;
-	WORD _wStartY;
-
-	WORD _wEndX;
-	WORD _wEndY;
+	int _iStartX;
+	int _iStartY;
+		 
+	int _iEndX;
+	int _iEndY;
 
 	int **map;
 };

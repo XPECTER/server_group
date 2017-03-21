@@ -31,12 +31,14 @@ int _tmain(int argc, _TCHAR* argv[])
 	// 완료
 
 	// 점프 포인트 서치 테스트 코드
+	//127.2134 83.23537
+	//123.5634 79.75667
 	//CJumpPointSearch jps(600, 200);		// 서버에서 사용할 크기이다. 클라이언트 맵의 X2배씩
 	//jps.JumpPointSearch_Init();
-	//jps.LoadTextMap(L"Map.txt");
+	//jps.LoadTextMap(L"Map.txt", "X");
 	//int out = 0;
 	//PATH path[30] = { 0, };
-	//jps.FindPath(262, 172, 221, 164, path, &out);
+	//jps.FindPath(POS_to_TILE_X(127.2134), POS_to_TILE_Y(83.23537), POS_to_TILE_X(123.5634), POS_to_TILE_Y(79.75667), path, &out);
 	// 완료
 	//////////////////////////////////////////////////////////
 	timeBeginPeriod(1);

@@ -22,10 +22,12 @@ CGameServer::CGameServer(int iClientMax) : CMMOServer(iClientMax)
 	// JPS
 	this->_jps = new CJumpPointSearch(dfMAP_TILE_X_MAX, dfMAP_TILE_Y_MAX);
 	this->_jps->JumpPointSearch_Init();
-	this->_jps->LoadTextMap(L"Map.txt");
+	this->_jps->LoadTextMap(L"Map.txt", "X");
 
 	// Field
 	this->_field = new CField<CLIENT_ID>(dfMAP_TILE_X_MAX, dfMAP_TILE_Y_MAX);
+	this->_field->Field_Init();
+	this->_field->LoadTextMap(L"Map.txt", "X");
 
 	// Sector
 	this->_sector = new CSector(dfSECTOR_X_MAX, dfSECTOR_Y_MAX);
@@ -324,6 +326,22 @@ void CGameServer::SendPacket_SectorAround(CPacket *pSendPacket, int iSectorX, in
 	{
 		this->SendPacket_SectorOne(pSendPacket, around._around[i]._iSectorX, around._around[i]._iSectorY, pException);
 	}
+
+	return;
+}
+
+void CGameServer::SendPacket_SectorSwitch(CPacket *pSendPacket_remove, int iRemoveSectorX, int iRemoveSectorY, CPacket *pSendPacket_add, int iAddSectorX, int iAddSectorY, CPlayer *pException)
+{
+	stAROUND_SECTOR removeSector, addSector;
+	this->_sector->GetAroundSector(iRemoveSectorX, iRemoveSectorY, &removeSector);
+	this->_sector->GetAroundSector(iAddSectorX, iAddSectorY, &addSector);
+	this->_sector->GetUpdateSector(&removeSector, &addSector);
+
+	for (int i = 0; i < removeSector._iCount; ++i)
+		SendPacket_SectorOne(pSendPacket_remove, removeSector._around[i]._iSectorX, removeSector._around[i]._iSectorX, pException);
+
+	for (int j = 0; j < addSector._iCount; ++j)
+		SendPacket_SectorOne(pSendPacket_add, addSector._around[j]._iSectorX, addSector._around[j]._iSectorY, pException);
 
 	return;
 }

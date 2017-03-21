@@ -412,7 +412,7 @@ enum en_PACKET_TYPE
 	//								// 섹터 이동으로 생성된건 0
 	//
 	//		BYTE	Sit				// 미사용
-	//		BYTE	Die				// 미사용
+	//		BYTE	Die				
 	//		int		HP				// 추가
 	//		BYTE	Party			// 1 또는 2  캐릭터의 파티정보
 	//

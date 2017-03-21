@@ -33,6 +33,9 @@ bool CGameServer::CSector::CheckRange(int iSectorX, int iSectorY)
 
 bool CGameServer::CSector::InsertPlayer_Sector(int iSectorX, int iSectorY, CLIENT_ID clientID, CPlayer *pPlayer)
 {
+	if ((-1) == iSectorX && (-1) == iSectorY)
+		return true;
+
 	if (!this->CheckRange(iSectorX, iSectorY))
 		return false;
 
@@ -68,16 +71,16 @@ bool CGameServer::CSector::DeletePlayer_Sector(int iSectorX, int iSectorY, CLIEN
 		return false;
 }
 
-bool CGameServer::CSector::MoveSector(int iBeforeX, int iBeforeY, int iAfterX, int iAfterY, CLIENT_ID clientID, CPlayer *pPlayer)
+bool CGameServer::CSector::MoveSector(int iCurrX, int iCurrY, int iMoveX, int iMoveY, CLIENT_ID clientID, CPlayer *pPlayer)
 {
-	if (!this->DeletePlayer_Sector(iBeforeX, iBeforeY, clientID, pPlayer))
+	if (!this->DeletePlayer_Sector(iCurrX, iCurrY, clientID, pPlayer))
 	{
 		SYSLOG(L"SECTOR", LOG::LEVEL_DEBUG, L"Do not exists clientID");
 		CCrashDump::Crash();
 		return false;
 	}
 
-	if (!this->InsertPlayer_Sector(iAfterX, iAfterY, clientID, pPlayer))
+	if (!this->InsertPlayer_Sector(iMoveX, iMoveY, clientID, pPlayer))
 	{
 		SYSLOG(L"SECTOR", LOG::LEVEL_DEBUG, L"Already exists");
 		CCrashDump::Crash();
@@ -113,11 +116,11 @@ void CGameServer::CSector::GetAroundSector(int iSectorX, int iSectorY, CGameServ
 	return;
 }
 
-void CGameServer::CSector::GetUpdateSector(CGameServer::stAROUND_SECTOR *beforeSector, CGameServer::stAROUND_SECTOR *afterSector)
+void CGameServer::CSector::GetUpdateSector(CGameServer::stAROUND_SECTOR *removeSector, CGameServer::stAROUND_SECTOR *addSector)
 {
-	stAROUND_SECTOR removeSector, addSector;
-	removeSector._iCount = 0;
-	addSector._iCount = 0;
+	stAROUND_SECTOR removeAround, addAround;
+	removeAround._iCount = 0;
+	addAround._iCount = 0;
 
 	int iSectorX;
 	int iSectorY;
@@ -128,16 +131,16 @@ void CGameServer::CSector::GetUpdateSector(CGameServer::stAROUND_SECTOR *beforeS
 	bool bFind;
 
 	// 삭제할 섹터를 구함
-	for (removeCnt; removeCnt < beforeSector->_iCount; ++removeCnt)
+	for (removeCnt; removeCnt < removeSector->_iCount; ++removeCnt)
 	{
-		iSectorX = beforeSector->_around[removeCnt]._iSectorX;
-		iSectorY = beforeSector->_around[removeCnt]._iSectorY;
+		iSectorX = removeSector->_around[removeCnt]._iSectorX;
+		iSectorY = removeSector->_around[removeCnt]._iSectorY;
 		bFind = false;
 
-		for (addCnt = 0; addCnt < afterSector->_iCount; ++addCnt)
+		for (addCnt = 0; addCnt < addSector->_iCount; ++addCnt)
 		{
-			if (iSectorX == afterSector->_around[addCnt]._iSectorX
-				&& iSectorY == afterSector->_around[addCnt]._iSectorY)
+			if (iSectorX == addSector->_around[addCnt]._iSectorX
+				&& iSectorY == addSector->_around[addCnt]._iSectorY)
 			{
 				bFind = true;
 				break;
@@ -146,9 +149,9 @@ void CGameServer::CSector::GetUpdateSector(CGameServer::stAROUND_SECTOR *beforeS
 
 		if (!bFind)
 		{
-			removeSector._around[removeSector._iCount]._iSectorX = iSectorX;
-			removeSector._around[removeSector._iCount]._iSectorY = iSectorY;
-			removeSector._iCount++;
+			removeAround._around[removeAround._iCount]._iSectorX = iSectorX;
+			removeAround._around[removeAround._iCount]._iSectorY = iSectorY;
+			removeAround._iCount++;
 		}
 	}
 
@@ -156,16 +159,16 @@ void CGameServer::CSector::GetUpdateSector(CGameServer::stAROUND_SECTOR *beforeS
 	removeCnt = 0;
 	addCnt = 0;
 
-	for (addCnt; addCnt < afterSector->_iCount; ++addCnt)
+	for (addCnt; addCnt < addSector->_iCount; ++addCnt)
 	{
-		iSectorX = afterSector->_around[addCnt]._iSectorX;
-		iSectorY = afterSector->_around[addCnt]._iSectorY;
+		iSectorX = addSector->_around[addCnt]._iSectorX;
+		iSectorY = addSector->_around[addCnt]._iSectorY;
 		bFind = false;
 
-		for (removeCnt = 0; removeCnt < beforeSector->_iCount; ++removeCnt)
+		for (removeCnt = 0; removeCnt < removeSector->_iCount; ++removeCnt)
 		{
-			if (iSectorX == beforeSector->_around[removeCnt]._iSectorX
-				&& iSectorY == beforeSector->_around[removeCnt]._iSectorY)
+			if (iSectorX == removeSector->_around[removeCnt]._iSectorX
+				&& iSectorY == removeSector->_around[removeCnt]._iSectorY)
 			{	
 				bFind = true;
 				break;
@@ -174,19 +177,19 @@ void CGameServer::CSector::GetUpdateSector(CGameServer::stAROUND_SECTOR *beforeS
 
 		if (!bFind)
 		{
-			addSector._around[addSector._iCount]._iSectorX = iSectorX;
-			addSector._around[addSector._iCount]._iSectorY = iSectorY;
-			addSector._iCount++;
+			addAround._around[addAround._iCount]._iSectorX = iSectorX;
+			addAround._around[addAround._iCount]._iSectorY = iSectorY;
+			addAround._iCount++;
 		}
 	}
 
-	(*beforeSector)._iCount = removeSector._iCount;
-	for (int i = 0; i < removeSector._iCount; ++i)
-		(*beforeSector)._around[i] = removeSector._around[i];
+	(*removeSector)._iCount = removeAround._iCount;
+	for (int i = 0; i < removeAround._iCount; ++i)
+		(*removeSector)._around[i] = removeAround._around[i];
 
-	(*afterSector)._iCount = addSector._iCount;
-	for (int i = 0; i < addSector._iCount; ++i)
-		(*afterSector)._around[i] = addSector._around[i];
+	(*addSector)._iCount = addAround._iCount;
+	for (int i = 0; i < addAround._iCount; ++i)
+		(*addSector)._around[i] = addAround._around[i];
 
 	return;
 }
