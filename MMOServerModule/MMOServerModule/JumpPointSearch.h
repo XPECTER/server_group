@@ -46,11 +46,6 @@ public:
 		int _iPosY;							// 노드의 Y좌표
 
 		BYTE _byDir;                       // 노드의 방향
-
-		bool operator<(const stJUMP_NODE &node) const
-		{
-			return this->_iFitness < node._iFitness;
-		}
 	}NODE;
 
 public:
@@ -73,12 +68,11 @@ private:
 	bool Jump_DirRR(int iInX, int iInY, int *iOutX, int *iOutY);
 	bool Jump_DirDD(int iInX, int iInY, int *iOutX, int *iOutY);
 	bool Jump_DirLL(int iInX, int iInY, int *iOutX, int *iOutY);
-	bool Jump_DirRU(int iInX, int iInY, int *iMiddleOutX, int *iMiddleOutY, int *iOutX, int *iOutY, BYTE *byOutDir);
-	bool Jump_DirRD(int iInX, int iInY, int *iMiddleOutX, int *iMiddleOutY, int *iOutX, int *iOutY, BYTE *byOutDir);
-	bool Jump_DirLD(int iInX, int iInY, int *iMiddleOutX, int *iMiddleOutY, int *iOutX, int *iOutY, BYTE *byOutDir);
-	bool Jump_DirLU(int iInX, int iInY, int *iMiddleOutX, int *iMiddleOutY, int *iOutX, int *iOutY, BYTE *byOutDir);
+	bool Jump_DirRU(NODE *pParents, int iPosX, int iPosY, bool bLoop);
+	bool Jump_DirRD(NODE *pParents, int iPosX, int iPosY, bool bLoop);
+	bool Jump_DirLD(NODE *pParents, int iPosX, int iPosY, bool bLoop);
+	bool Jump_DirLU(NODE *pParents, int iPosX, int iPosY, bool bLoop);
 
-	//bool Compare(const NODE &a, const NODE &b);
 	bool CheckRange(int iPosX, int iPosY);
 
 	bool CheckDestination(int iPosX, int iPosY);

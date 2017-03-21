@@ -492,7 +492,7 @@ void CGameServer::CPlayer::PacketProc_MoveCharacter(CPacket *pRecvPacket)
 		MakePacket_ResMoveCharacter(pSendPacket, clientID, (BYTE)this->_pathCount, this->_path);
 		this->_pPath = this->_path;
 		this->_bMove = true;
-		this->_rotation = MoveDirection(this->_serverX_curr, this->_serverY_curr, this->_pPath->X, this->_pPath->Y);
+		this->_rotation = MoveDirection(this->_serverX_curr, this->_serverY_curr, POS_to_TILE_X(this->_pPath->X), POS_to_TILE_Y(this->_pPath->Y));
 		this->_nextTileTime = time(NULL);
 	}
 	else

@@ -165,7 +165,7 @@ CJumpPointSearch::NODE* CJumpPointSearch::CreateNode(NODE *pParents, int iPosX, 
 	pNewNode->_iHeuristic = (abs(this->_iEndX - pNewNode->_iPosX) + abs(this->_iEndY - pNewNode->_iPosY)) * 10;
 	pNewNode->_iFitness = pNewNode->_iGoal + pNewNode->_iHeuristic;
 
-	this->_openList.push_back(pNewNode);
+	this->_openList.push_front(pNewNode);
 
 	// Fitness 값에 의한 정렬을 해줘야 한다.
 	this->_openList.sort(Compare);
@@ -184,66 +184,30 @@ void CJumpPointSearch::Jump(NODE *pNode, BYTE byDir)
 {
 	int iOutX = -1;
 	int iOutY = -1;
-	int iMiddleX = -1;
-	int iMiddleY = -1;
-	NODE *pMiddleNode = NULL;
-	BYTE byOutDir;
 
 	switch (byDir)
 	{
 		case en_DIR_NN:
 		{
 			if (this->Jump_DirUU(pNode->_iPosX, pNode->_iPosY, &iOutX, &iOutY))
-			{
 				this->CreateNode(pNode, iOutX, iOutY, en_DIR_UU);
-			}
 
 			if (this->Jump_DirRR(pNode->_iPosX, pNode->_iPosY, &iOutX, &iOutY))
-			{
 				this->CreateNode(pNode, iOutX, iOutY, en_DIR_RR);
-			}
 
 			if (this->Jump_DirDD(pNode->_iPosX, pNode->_iPosY, &iOutX, &iOutY))
-			{
 				this->CreateNode(pNode, iOutX, iOutY, en_DIR_DD);
-			}
 
 			if (this->Jump_DirLL(pNode->_iPosX, pNode->_iPosY, &iOutX, &iOutY))
-			{
 				this->CreateNode(pNode, iOutX, iOutY, en_DIR_LL);
-			}
 
-			if (this->Jump_DirRU(pNode->_iPosX, pNode->_iPosY, &iMiddleX, &iMiddleY, &iOutX, &iOutY, &byOutDir))
-			{
-				pMiddleNode = this->CreateNode(pNode, iMiddleX, iMiddleY, en_DIR_RU);
-
-				if ((-1) != iOutX)
-					this->CreateNode(pMiddleNode, iOutX, iOutY, byOutDir);
-			}
-
-			if (this->Jump_DirRD(pNode->_iPosX, pNode->_iPosY, &iMiddleX, &iMiddleY, &iOutX, &iOutY, &byOutDir))
-			{
-				pMiddleNode = this->CreateNode(pNode, iMiddleX, iMiddleY, en_DIR_RD);
-
-				if ((-1) != iOutX)
-					this->CreateNode(pMiddleNode, iOutX, iOutY, byOutDir);
-			}
-
-			if (this->Jump_DirLD(pNode->_iPosX, pNode->_iPosY, &iMiddleX, &iMiddleY, &iOutX, &iOutY, &byOutDir))
-			{
-				pMiddleNode = this->CreateNode(pNode, iMiddleX, iMiddleY, en_DIR_LD);
-
-				if ((-1) != iOutX)
-					this->CreateNode(pMiddleNode, iOutX, iOutY, byOutDir);
-			}
-
-			if (this->Jump_DirLU(pNode->_iPosX, pNode->_iPosY, &iMiddleX, &iMiddleY, &iOutX, &iOutY, &byOutDir))
-			{
-				pMiddleNode = this->CreateNode(pNode, iMiddleX, iMiddleY, en_DIR_LU);
-
-				if ((-1) != iOutX)
-					this->CreateNode(pMiddleNode, iOutX, iOutY, byOutDir);
-			}
+			this->Jump_DirRU(pNode, pNode->_iPosX, pNode->_iPosY, false);
+			
+			this->Jump_DirRD(pNode, pNode->_iPosX, pNode->_iPosY, false);
+			
+			this->Jump_DirLD(pNode, pNode->_iPosX, pNode->_iPosY, false);
+			
+			this->Jump_DirLU(pNode, pNode->_iPosX, pNode->_iPosY, false);
 
 			break;
 		}
@@ -251,25 +215,11 @@ void CJumpPointSearch::Jump(NODE *pNode, BYTE byDir)
 		case en_DIR_UU:
 		{
 			if (this->Jump_DirUU(pNode->_iPosX, pNode->_iPosY, &iOutX, &iOutY))
-			{
-				this->CreateNode(pNode, iOutX, iOutY, en_DIR_UU);
-			}
+				this->CreateNode(pNode, iOutX, iOutY, en_DIR_RR);
 
-			if (this->Jump_DirLU(pNode->_iPosX, pNode->_iPosY, &iMiddleX, &iMiddleY, &iOutX, &iOutY, &byOutDir))
-			{
-				pMiddleNode = this->CreateNode(pNode, iMiddleX, iMiddleY, en_DIR_LU);
+			this->Jump_DirLU(pNode, pNode->_iPosX, pNode->_iPosY, true);
 
-				if ((-1) != iOutX)
-					this->CreateNode(pMiddleNode, iOutX, iOutY, byOutDir);
-			}
-
-			if (this->Jump_DirRU(pNode->_iPosX, pNode->_iPosY, &iMiddleX, &iMiddleY, &iOutX, &iOutY, &byOutDir))
-			{
-				pMiddleNode = this->CreateNode(pNode, iMiddleX, iMiddleY, en_DIR_RU);
-
-				if ((-1) != iOutX)
-					this->CreateNode(pMiddleNode, iOutX, iOutY, byOutDir);
-			}
+			this->Jump_DirRU(pNode, pNode->_iPosX, pNode->_iPosY, true);
 
 			break;
 		}
@@ -277,25 +227,11 @@ void CJumpPointSearch::Jump(NODE *pNode, BYTE byDir)
 		case en_DIR_RR:
 		{
 			if (this->Jump_DirRR(pNode->_iPosX, pNode->_iPosY, &iOutX, &iOutY))
-			{
 				this->CreateNode(pNode, iOutX, iOutY, en_DIR_RR);
-			}
 
-			if (this->Jump_DirRU(pNode->_iPosX, pNode->_iPosY, &iMiddleX, &iMiddleY, &iOutX, &iOutY, &byOutDir))
-			{
-				pMiddleNode = this->CreateNode(pNode, iMiddleX, iMiddleY, en_DIR_RU);
+			this->Jump_DirRU(pNode, pNode->_iPosX, pNode->_iPosY, true);
 
-				if ((-1) != iOutX)
-					this->CreateNode(pMiddleNode, iOutX, iOutY, byOutDir);
-			}
-
-			if (this->Jump_DirRD(pNode->_iPosX, pNode->_iPosY, &iMiddleX, &iMiddleY, &iOutX, &iOutY, &byOutDir))
-			{
-				pMiddleNode = this->CreateNode(pNode, iMiddleX, iMiddleY, en_DIR_RD);
-
-				if ((-1) != iOutX)
-					this->CreateNode(pMiddleNode, iOutX, iOutY, byOutDir);
-			}
+			this->Jump_DirRD(pNode, pNode->_iPosX, pNode->_iPosY, true);
 
 			break;
 		}
@@ -303,25 +239,11 @@ void CJumpPointSearch::Jump(NODE *pNode, BYTE byDir)
 		case en_DIR_DD:
 		{
 			if (this->Jump_DirDD(pNode->_iPosX, pNode->_iPosY, &iOutX, &iOutY))
-			{
 				this->CreateNode(pNode, iOutX, iOutY, en_DIR_DD);
-			}
 
-			if (this->Jump_DirRD(pNode->_iPosX, pNode->_iPosY, &iMiddleX, &iMiddleY, &iOutX, &iOutY, &byOutDir))
-			{
-				pMiddleNode = this->CreateNode(pNode, iMiddleX, iMiddleY, en_DIR_RD);
+			this->Jump_DirRD(pNode, pNode->_iPosX, pNode->_iPosY, true);
 
-				if ((-1) != iOutX)
-					this->CreateNode(pMiddleNode, iOutX, iOutY, byOutDir);
-			}
-
-			if (this->Jump_DirLD(pNode->_iPosX, pNode->_iPosY, &iMiddleX, &iMiddleY, &iOutX, &iOutY, &byOutDir))
-			{
-				pMiddleNode = this->CreateNode(pNode, iMiddleX, iMiddleY, en_DIR_LD);
-				
-				if ((-1) != iOutX)
-					this->CreateNode(pMiddleNode, iOutX, iOutY, byOutDir);
-			}
+			this->Jump_DirLD(pNode, pNode->_iPosX, pNode->_iPosY, true);
 
 			break;
 		}
@@ -329,77 +251,63 @@ void CJumpPointSearch::Jump(NODE *pNode, BYTE byDir)
 		case en_DIR_LL:
 		{
 			if (this->Jump_DirLL(pNode->_iPosX, pNode->_iPosY, &iOutX, &iOutY))
-			{
 				this->CreateNode(pNode, iOutX, iOutY, en_DIR_LL);
-			}
 
-			if (this->Jump_DirLD(pNode->_iPosX, pNode->_iPosY, &iMiddleX, &iMiddleY, &iOutX, &iOutY, &byOutDir))
-			{
-				pMiddleNode = this->CreateNode(pNode, iMiddleX, iMiddleY, en_DIR_LD);
+			this->Jump_DirLD(pNode, pNode->_iPosX, pNode->_iPosY, true);
 
-				if ((-1) != iOutX)
-					this->CreateNode(pMiddleNode, iOutX, iOutY, byOutDir);
-			}
-
-			if (this->Jump_DirLU(pNode->_iPosX, pNode->_iPosY, &iMiddleX, &iMiddleY, &iOutX, &iOutY, &byOutDir))
-			{
-				pMiddleNode = this->CreateNode(pNode, iMiddleX, iMiddleY, en_DIR_LU);
-
-				if ((-1) != iOutX)
-					this->CreateNode(pMiddleNode, iOutX, iOutY, byOutDir);
-			}
-
+			this->Jump_DirLU(pNode, pNode->_iPosX, pNode->_iPosY, true);
+			
 			break;
 		}
 
 		case en_DIR_RU:
 		{
-			if (this->Jump_DirRU(pNode->_iPosX, pNode->_iPosY, &iMiddleX, &iMiddleY, &iOutX, &iOutY, &byOutDir))
-			{
-				pMiddleNode = this->CreateNode(pNode, iMiddleX, iMiddleY, en_DIR_RU);
+			if (this->Jump_DirUU(pNode->_iPosX, pNode->_iPosY, &iOutX, &iOutY))
+				this->CreateNode(pNode, iOutX, iOutY, en_DIR_UU);
 
-				if ((-1) != iOutX)
-					this->CreateNode(pMiddleNode, iOutX, iOutY, byOutDir);
-			}
+			if (this->Jump_DirRR(pNode->_iPosX, pNode->_iPosY, &iOutX, &iOutY))
+				this->CreateNode(pNode, iOutX, iOutY, en_DIR_RR);
+
+			this->Jump_DirRU(pNode, pNode->_iPosX, pNode->_iPosY, true);
 
 			break;
 		}
 
 		case en_DIR_RD:
 		{
-			if (this->Jump_DirRD(pNode->_iPosX, pNode->_iPosY, &iMiddleX, &iMiddleY, &iOutX, &iOutY, &byOutDir))
-			{
-				pMiddleNode = this->CreateNode(pNode, iMiddleX, iMiddleY, en_DIR_RD);
+			if (this->Jump_DirRR(pNode->_iPosX, pNode->_iPosY, &iOutX, &iOutY))
+				this->CreateNode(pNode, iOutX, iOutY, en_DIR_RR);
 
-				if ((-1) != iOutX)
-					this->CreateNode(pMiddleNode, iOutX, iOutY, byOutDir);
-			}
+			if (this->Jump_DirDD(pNode->_iPosX, pNode->_iPosY, &iOutX, &iOutY))
+				this->CreateNode(pNode, iOutX, iOutY, en_DIR_DD);
+
+			this->Jump_DirRD(pNode, pNode->_iPosX, pNode->_iPosY, true);
 
 			break;
 		}
 
 		case en_DIR_LD:
 		{
-			if (this->Jump_DirLD(pNode->_iPosX, pNode->_iPosY, &iMiddleX, &iMiddleY, &iOutX, &iOutY, &byOutDir))
-			{
-				pMiddleNode = this->CreateNode(pNode, iMiddleX, iMiddleY, en_DIR_LD);
+			if (this->Jump_DirDD(pNode->_iPosX, pNode->_iPosY, &iOutX, &iOutY))
+				this->CreateNode(pNode, iOutX, iOutY, en_DIR_DD);
 
-				if ((-1) != iOutX)
-					this->CreateNode(pMiddleNode, iOutX, iOutY, byOutDir);
-			}
+			if (this->Jump_DirLL(pNode->_iPosX, pNode->_iPosY, &iOutX, &iOutY))
+				this->CreateNode(pNode, iOutX, iOutY, en_DIR_LL);
+
+			this->Jump_DirLD(pNode, pNode->_iPosX, pNode->_iPosY, true);
 
 			break;
 		}
 
 		case en_DIR_LU:
 		{
-			if (this->Jump_DirLU(pNode->_iPosX, pNode->_iPosY, &iMiddleX, &iMiddleY, &iOutX, &iOutY, &byOutDir))
-			{
-				pMiddleNode = this->CreateNode(pNode, iMiddleX, iMiddleY, en_DIR_LU);
+			if (this->Jump_DirLL(pNode->_iPosX, pNode->_iPosY, &iOutX, &iOutY))
+				this->CreateNode(pNode, iOutX, iOutY, en_DIR_LL);
 
-				if ((-1) != iOutX)
-					this->CreateNode(pMiddleNode, iOutX, iOutY, byOutDir);
-			}
+			if (this->Jump_DirUU(pNode->_iPosX, pNode->_iPosY, &iOutX, &iOutY))
+				this->CreateNode(pNode, iOutX, iOutY, en_DIR_UU);
+
+			this->Jump_DirLU(pNode, pNode->_iPosX, pNode->_iPosY, true);
 
 			break;
 		}
@@ -408,12 +316,12 @@ void CJumpPointSearch::Jump(NODE *pNode, BYTE byDir)
 
 /////////////////////////////////////////////////////////////////////
 //
-//	함수 : Jump_DirUU(short iInX, short iInY, short *iOutX, short *iOutY)
+//	함수 : Jump_DirUU(int iInX, int iInY, int *iOutX, int *iOutY, bool bLoop)
 //	인자 : 
-//		short iInX		: 로직을 시작할 X좌표
-//		short iInY		: 로직을 시작할 Y좌표
-//		short *iOutX	: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 세팅한다.
-//		short *iOutY	: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 세팅한다.
+//		int 	: 로직을 시작할 X좌표
+//		int 	: 로직을 시작할 Y좌표
+//		int* 	: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 X좌표를 세팅한다.
+//		int* 	: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 Y좌표를 세팅한다.
 //
 //	로직 실행할 노드의 위치에서 윗 방향으로 검색하는 함수
 /////////////////////////////////////////////////////////////////////
@@ -484,12 +392,12 @@ bool CJumpPointSearch::Jump_DirUU(int iInX, int iInY, int *iOutX, int *iOutY)
 
 /////////////////////////////////////////////////////////////////////
 //
-//	함수 : Jump_DirRR(short iInX, short iInY, short *iOutX, short *iOutY)
+//	함수 : Jump_DirRR(int iInX, int iInY, int *iOutX, int *iOutY, bool bLoop)
 //	인자 : 
-//		short iInX		: 로직을 시작할 X좌표
-//		short iInY		: 로직을 시작할 Y좌표
-//		short *iOutX	: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 세팅한다.
-//		short *iOutY	: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 세팅한다.
+//		int 	: 로직을 시작할 X좌표
+//		int 	: 로직을 시작할 Y좌표
+//		int* 	: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 X좌표를 세팅한다.
+//		int* 	: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 Y좌표를 세팅한다.
 //
 //	로직 실행할 노드의 위치에서 오른 방향으로 검색하는 함수
 /////////////////////////////////////////////////////////////////////
@@ -560,12 +468,12 @@ bool CJumpPointSearch::Jump_DirRR(int iInX, int iInY, int *iOutX, int *iOutY)
 
 /////////////////////////////////////////////////////////////////////
 //
-//	함수 : Jump_DirDD(short iInX, short iInY, short *iOutX, short *iOutY)
+//	함수 : Jump_DirDD(int iInX, int iInY, int *iOutX, int *iOutY, bool bLoop)
 //	인자 : 
-//		short iInX		: 로직을 시작할 X좌표
-//		short iInY		: 로직을 시작할 Y좌표
-//		short *iOutX	: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 세팅한다.
-//		short *iOutY	: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 세팅한다.
+//		int 	: 로직을 시작할 X좌표
+//		int 	: 로직을 시작할 Y좌표
+//		int* 	: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 X좌표를 세팅한다.
+//		int* 	: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 Y좌표를 세팅한다.
 //
 //	로직 실행할 노드의 위치에서 아랫 방향으로 검색하는 함수
 /////////////////////////////////////////////////////////////////////
@@ -636,12 +544,12 @@ bool CJumpPointSearch::Jump_DirDD(int iInX, int iInY, int *iOutX, int *iOutY)
 
 /////////////////////////////////////////////////////////////////////
 //
-//	함수 : Jump_DirLL(short iInX, short iInY, short *iOutX, short *iOutY)
+//	함수 : Jump_DirLL(int iInX, int iInY, int *iOutX, int *iOutY, bool bLoop)
 //	인자 : 
-//		short iInX		: 로직을 시작할 X좌표
-//		short iInY		: 로직을 시작할 Y좌표
-//		short *iOutX	: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 세팅한다.
-//		short *iOutY	: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 세팅한다.
+//		int 	: 로직을 시작할 X좌표
+//		int 	: 로직을 시작할 Y좌표
+//		int* 	: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 X좌표를 세팅한다.
+//		int* 	: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 Y좌표를 세팅한다.
 //
 //	로직 실행할 노드의 위치에서 왼 방향으로 검색하는 함수
 /////////////////////////////////////////////////////////////////////
@@ -714,57 +622,136 @@ bool CJumpPointSearch::Jump_DirLL(int iInX, int iInY, int *iOutX, int *iOutY)
 
 /////////////////////////////////////////////////////////////////////
 //
-//	함수 : Jump_DirRU(short iInX, short iInY, short *iMiddleOutX, short *iMiddleOutY, short *iOutX, short *iOutY, BYTE *byOutDir)
+//	함수 : Jump_DirRU(NODE *pParents, int iPosX, int iPosY, bool bLoop)
 //	인자 : 
-//		short iInX			: 로직을 시작할 X좌표
-//		short iInY			: 로직을 시작할 Y좌표
-//		short iMiddleOutX	: 중간 노드 생성하기 전 경로 노드의 X좌표
-//		short iMiddleOutY	: 중간 노드 생성하기 전 경로 노드의 Y좌표
-//		WORD *iOutX			: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 세팅한다.
-//		WORD *iOutY			: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 세팅한다.
-//		BYTE *byOutDir		: 어느 방향 로직에서 찾았는지 세팅
+//		NODE *	: 노드 생성 시 부모 노드로 연결할 노드 포인터
+//		int		: 로직을 시작할 X 좌표
+//		int		: 로직을 시작할 Y 좌표
+//		bool	: 중간 노드를 찾더라도 해당 방향으로 계속 탐색할지 여부
 //
-//	로직 실행할 노드의 위치에서 오른쪽 윗 방향으로 검색하는 함수
+//	로직 실행할 노드의 위치에서 오른 쪽 윗 방향으로 검색하는 함수
 /////////////////////////////////////////////////////////////////////
-bool CJumpPointSearch::Jump_DirRU(int iInX, int iInY, int *iMiddleOutX, int *iMiddleOutY, int *iOutX, int *iOutY, BYTE *byOutDir)
+bool CJumpPointSearch::Jump_DirRU(NODE *pParents, int iPosX, int iPosY, bool bLoop)
 {
-	int iX = iInX;
-	int iY = iInY;
+	int iX = iPosX;
+	int iY = iPosY;
+	int iOutX;
+	int iOutY;
+	NODE *pDiagonalNode = NULL;
 
 	while (true)
 	{
+		// 오른 쪽 한 칸 앞과 위 쪽 한 칸 앞이 둘 다 장애물이면 종료
+		if ((en_TILE_FIX_OBSTACLE == map[iY - 1][iX]) &&
+			(en_TILE_FIX_OBSTACLE == map[iY][iX + 1]))
+			return false;
+
+		// 오른쪽 위로 한 칸 이동
 		iX++;
 		iY--;
 
-		if (!this->CheckRange(iX, iY))
-			break;
+		// 맵을 벗어났거나 현재 칸이 장애물이면 종료
+		if (!this->CheckRange(iX, iY) || (en_TILE_FIX_OBSTACLE == map[iY][iX]))
+			return false;
 
-		if ((0 > (iX - 1)) || (en_TILE_FIX_OBSTACLE == map[iY][iX]))
-			break;
-
+		// 지금 위치가 목적지이면 노드 만들고 종료
 		if (this->CheckDestination(iX, iY))
 		{
-			*iMiddleOutX = iX;
-			*iMiddleOutY = iY;
-			*iOutX = (-1);
-			//*iOutY = (-1);
+			if (NULL == pDiagonalNode)
+				this->CreateNode(pParents, iX, iY, en_DIR_NN);
+			else
+				this->CreateNode(pDiagonalNode, iX, iY, en_DIR_NN);
+
 			return true;
 		}
 
-		if (this->Jump_DirUU(iX, iY, iOutX, iOutY))
+		// 오른 쪽 두 칸 옆이 벽
+		if ((iX + 1) <= (this->_width - 1))
 		{
-			*iMiddleOutX = iX;
-			*iMiddleOutY = iY;
-			*byOutDir = en_DIR_UU;
-			return true;
+			if (en_TILE_FIX_OBSTACLE == this->map[iY + 1][iX] &&
+				en_TILE_NONE == this->map[iY][iX + 1] &&
+				en_TILE_NONE == this->map[iY + 1][iX + 1])
+			{
+				if (NULL == pDiagonalNode)
+					pDiagonalNode = this->CreateNode(pParents, iX, iY, en_DIR_RU);
+				else
+				{
+					if (iX != pDiagonalNode->_iPosX || iY != pDiagonalNode->_iPosY)
+					{
+						pDiagonalNode = this->CreateNode(pDiagonalNode, iX, iY, en_DIR_RU);
+					}
+				}
+				
+				this->CreateNode(pDiagonalNode, (iX + 1), (iY + 1), en_DIR_RD);
+			}
+		}
+		// 위 쪽 두 칸 옆이 벽
+		else if (0 <= (iY - 1))
+		{
+			if (en_TILE_FIX_OBSTACLE == this->map[iY][iX - 1] &&
+				en_TILE_NONE == this->map[iY - 1][iX] &&
+				en_TILE_NONE == this->map[iY - 1][iX - 1])
+			{
+				if (NULL == pDiagonalNode)
+					pDiagonalNode = this->CreateNode(pParents, iX, iY, en_DIR_RU);
+				else
+				{
+					if (iX != pDiagonalNode->_iPosX || iY != pDiagonalNode->_iPosY)
+					{
+						pDiagonalNode = this->CreateNode(pDiagonalNode, iX, iY, en_DIR_RU);
+					}
+				}
+				
+				this->CreateNode(pDiagonalNode, (iX - 1), (iY - 1), en_DIR_LU);
+			}
 		}
 
-		if (this->Jump_DirRR(iX, iY, iOutX, iOutY))
+		// 위 쪽 순회 중 중간 노드를 만나면 현재 방향 노드 만들고 종료.
+		// 만약 찾은 위치가 목적지면 목적지까지 만들고 종료
+		if (this->Jump_DirUU(iX, iY, &iOutX, &iOutY))
 		{
-			*iMiddleOutX = iX;
-			*iMiddleOutY = iY;
-			*byOutDir = en_DIR_RR;
-			return true;
+			if (NULL == pDiagonalNode)
+				pDiagonalNode = this->CreateNode(pParents, iX, iY, en_DIR_RU);
+			else
+			{
+				if (iX != pDiagonalNode->_iPosX || iY != pDiagonalNode->_iPosY)
+				{
+					pDiagonalNode = this->CreateNode(pDiagonalNode, iX, iY, en_DIR_RU);
+				}
+			}
+
+			if (this->_iEndX == iOutX && this->_iEndY == iOutY)
+			{
+				this->CreateNode(pDiagonalNode, iOutX, iOutY, en_DIR_NN);
+				return true;
+			}
+			
+			if (false == bLoop)
+				return true;
+		}
+
+		// 오른 쪽 순회 중 중간 노드를 만나면 현재 방향 노드 만들고 종료.
+		// 만약 찾은 위치가 목적지면 목적지까지 만들고 종료
+		if (this->Jump_DirRR(iX, iY, &iOutX, &iOutY))
+		{
+			if (NULL == pDiagonalNode)
+				pDiagonalNode = this->CreateNode(pParents, iX, iY, en_DIR_RU);
+			else
+			{
+				if (iX != pDiagonalNode->_iPosX || iY != pDiagonalNode->_iPosY)
+				{
+					pDiagonalNode = this->CreateNode(pDiagonalNode, iX, iY, en_DIR_RU);
+				}
+			}
+
+			if (this->_iEndX == iOutX && this->_iEndY == iOutY)
+			{
+				this->CreateNode(pDiagonalNode, iOutX, iOutY, en_DIR_NN);
+				return true;
+			}
+
+			if (false == bLoop)
+				return true;
 		}
 	}
 
@@ -773,57 +760,136 @@ bool CJumpPointSearch::Jump_DirRU(int iInX, int iInY, int *iMiddleOutX, int *iMi
 
 /////////////////////////////////////////////////////////////////////
 //
-//	함수 : Jump_DirRD(short iInX, short iInY, short *iMiddleOutX, short *iMiddleOutY, short *iOutX, short *iOutY, BYTE *byOutDir)
+//	함수 : Jump_DirRD(NODE *pParents, int iPosX, int iPosY, bool bLoop)
 //	인자 : 
-//		short iInX			: 로직을 시작할 X좌표
-//		short iInY			: 로직을 시작할 Y좌표
-//		short iMiddleOutX	: 중간 노드 생성하기 전 경로 노드의 X좌표
-//		short iMiddleOutY	: 중간 노드 생성하기 전 경로 노드의 Y좌표
-//		WORD *iOutX			: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 세팅한다.
-//		WORD *iOutY			: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 세팅한다.
-//		BYTE *byOutDir		: 어느 방향 로직에서 찾았는지 세팅
+//		NODE *	: 노드 생성 시 부모 노드로 연결할 노드 포인터
+//		int		: 로직을 시작할 X 좌표
+//		int		: 로직을 시작할 Y 좌표
+//		bool	: 중간 노드를 찾더라도 해당 방향으로 계속 탐색할지 여부
 //
-//	로직 실행할 노드의 위치에서 오른쪽 아랫 방향으로 검색하는 함수
+//	로직 실행할 노드의 위치에서 오른 쪽 아랫 방향으로 검색하는 함수
 /////////////////////////////////////////////////////////////////////
-bool CJumpPointSearch::Jump_DirRD(int iInX, int iInY, int *iMiddleOutX, int *iMiddleOutY, int *iOutX, int *iOutY, BYTE *byOutDir)
+bool CJumpPointSearch::Jump_DirRD(NODE *pParents, int iPosX, int iPosY, bool bLoop)
 {
-	int iX = iInX;
-	int iY = iInY;
+	int iX = iPosX;
+	int iY = iPosY;
+	int iOutX;
+	int iOutY;
+	NODE *pDiagonalNode = NULL;
 
 	while (true)
 	{
+		// 오른 쪽 한 칸 앞과 위 쪽 한 칸 앞이 둘 다 장애물이면 종료
+		if ((en_TILE_FIX_OBSTACLE == map[iY + 1][iX]) &&
+			(en_TILE_FIX_OBSTACLE == map[iY][iX + 1]))
+			return false;
+
+		// 오른쪽 아래로 한 칸 이동
 		iX++;
 		iY++;
 
-		if (!this->CheckRange(iX, iY))
-			break;
+		// 맵을 벗어났거나 현재 칸이 장애물이면 종료
+		if (!this->CheckRange(iX, iY) || (en_TILE_FIX_OBSTACLE == map[iY][iX]))
+			return false;
 
-		if ((0 > (iX - 1)) || (en_TILE_FIX_OBSTACLE == map[iY][iX]))
-			break;
-
+		// 지금 위치가 목적지이면 노드 만들고 종료
 		if (this->CheckDestination(iX, iY))
 		{
-			*iMiddleOutX = iX;
-			*iMiddleOutY = iY;
-			*iOutX = (-1);
-			//*iOutY = (-1);
+			if (NULL == pDiagonalNode)
+				this->CreateNode(pParents, iX, iY, en_DIR_NN);
+			else
+				this->CreateNode(pDiagonalNode, iX, iY, en_DIR_NN);
+
 			return true;
 		}
 
-		if (this->Jump_DirRR(iX, iY, iOutX, iOutY))
+		// 오른 쪽 두 칸 옆이 벽
+		if ((iX + 1) <= (this->_width - 1))
 		{
-			*iMiddleOutX = iX;
-			*iMiddleOutY = iY;
-			*byOutDir = en_DIR_RR;
-			return true;
+			if (en_TILE_FIX_OBSTACLE == this->map[iY - 1][iX] &&
+				en_TILE_NONE == this->map[iY][iX + 1] &&
+				en_TILE_NONE == this->map[iY - 1][iX + 1])
+			{
+				if (NULL == pDiagonalNode)
+					pDiagonalNode = this->CreateNode(pParents, iX, iY, en_DIR_RD);
+				else
+				{
+					if (iX != pDiagonalNode->_iPosX || iY != pDiagonalNode->_iPosY)
+					{
+						pDiagonalNode = this->CreateNode(pDiagonalNode, iX, iY, en_DIR_RD);
+					}
+				}
+			
+				this->CreateNode(pDiagonalNode, (iX + 1), (iY + 1), en_DIR_RU);
+			}
+		}
+		// 아래 쪽 두 칸 밑이 벽
+		else if ((iY + 1) <= (this->_height - 1))
+		{
+			if (en_TILE_FIX_OBSTACLE == this->map[iY][iX - 1] &&
+				en_TILE_NONE == this->map[iY + 1][iX] &&
+				en_TILE_NONE == this->map[iY + 1][iX - 1])
+			{
+				if (NULL == pDiagonalNode)
+					pDiagonalNode = this->CreateNode(pParents, iX, iY, en_DIR_RU);
+				else
+				{
+					if (iX != pDiagonalNode->_iPosX || iY != pDiagonalNode->_iPosY)
+					{
+						pDiagonalNode = this->CreateNode(pDiagonalNode, iX, iY, en_DIR_RU);
+					}
+				}
+			
+				this->CreateNode(pDiagonalNode, (iX - 1), (iY - 1), en_DIR_LD);
+			}
 		}
 
-		if (this->Jump_DirDD(iX, iY, iOutX, iOutY))
+		// 오른 쪽 순회 중 중간 노드를 만나면 현재 방향 노드 만들고 종료.
+		// 만약 찾은 위치가 목적지면 목적지까지 만들고 종료
+		if (this->Jump_DirRR(iX, iY, &iOutX, &iOutY))
 		{
-			*iMiddleOutX = iX;
-			*iMiddleOutY = iY;
-			*byOutDir = en_DIR_DD;
-			return true;
+			if (NULL == pDiagonalNode)
+				pDiagonalNode = this->CreateNode(pParents, iX, iY, en_DIR_RD);
+			else
+			{
+				if (iX != pDiagonalNode->_iPosX || iY != pDiagonalNode->_iPosY)
+				{
+					pDiagonalNode = this->CreateNode(pDiagonalNode, iX, iY, en_DIR_RD);
+				}
+			}
+
+			if (this->_iEndX == iOutX && this->_iEndY == iOutY)
+			{
+				this->CreateNode(pDiagonalNode, iOutX, iOutY, en_DIR_NN);
+				return true;
+			}
+				
+			if (false == bLoop)
+				return true;
+		}
+
+		// 아랫 쪽 순회 중 중간 노드를 만나면 현재 방향 노드 만들고 종료.
+		// 만약 찾은 위치가 목적지면 목적지까지 만들고 종료
+		if (this->Jump_DirDD(iX, iY, &iOutX, &iOutY))
+		{
+			if (NULL == pDiagonalNode)
+				pDiagonalNode = this->CreateNode(pParents, iX, iY, en_DIR_RD);
+			else
+			{
+				if (iX != pDiagonalNode->_iPosX || iY != pDiagonalNode->_iPosY)
+				{
+					pDiagonalNode = this->CreateNode(pDiagonalNode, iX, iY, en_DIR_RD);
+				}
+			}
+
+			if (this->_iEndX == iOutX && this->_iEndY == iOutY)
+			{
+				this->CreateNode(pDiagonalNode, iOutX, iOutY, en_DIR_NN);
+				return true;
+			}
+
+			if (false == bLoop)
+				return true;
 		}
 	}
 
@@ -832,57 +898,136 @@ bool CJumpPointSearch::Jump_DirRD(int iInX, int iInY, int *iMiddleOutX, int *iMi
 
 /////////////////////////////////////////////////////////////////////
 //
-//	함수 : Jump_DirLD(short iInX, short iInY, short *iMiddleOutX, short *iMiddleOutY, short *iOutX, short *iOutY, BYTE *byOutDir)
+//	함수 : Jump_DirLD(NODE *pParents, int iPosX, int iPosY, bool bLoop)
 //	인자 : 
-//		short iInX			: 로직을 시작할 X좌표
-//		short iInY			: 로직을 시작할 Y좌표
-//		short iMiddleOutX	: 중간 노드 생성하기 전 경로 노드의 X좌표
-//		short iMiddleOutY	: 중간 노드 생성하기 전 경로 노드의 Y좌표
-//		WORD *iOutX			: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 세팅한다.
-//		WORD *iOutY			: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 세팅한다.
-//		BYTE *byOutDir		: 어느 방향 로직에서 찾았는지 세팅
+//		NODE *	: 노드 생성 시 부모 노드로 연결할 노드 포인터
+//		int		: 로직을 시작할 X 좌표
+//		int		: 로직을 시작할 Y 좌표
+//		bool	: 중간 노드를 찾더라도 해당 방향으로 계속 탐색할지 여부
 //
-//	로직 실행할 노드의 위치에서 왼쪽 아랫 방향으로 검색하는 함수
+//	로직 실행할 노드의 위치에서 왼 쪽 아랫 방향으로 검색하는 함수
 /////////////////////////////////////////////////////////////////////
-bool CJumpPointSearch::Jump_DirLD(int iInX, int iInY, int *iMiddleOutX, int *iMiddleOutY, int *iOutX, int *iOutY, BYTE *byOutDir)
+bool CJumpPointSearch::Jump_DirLD(NODE *pParents, int iPosX, int iPosY, bool bLoop)
 {
-	int iX = iInX;
-	int iY = iInY;
+	int iX = iPosX;
+	int iY = iPosY;
+	int iOutX;
+	int iOutY;
+	NODE *pDiagonalNode = NULL;
 
 	while (true)
 	{
+		// 왼쪽 한 칸 앞과 아래쪽 한 칸 앞이 둘 다 장애물이면 종료
+		if ((en_TILE_FIX_OBSTACLE == map[iY + 1][iX]) &&
+			(en_TILE_FIX_OBSTACLE == map[iY][iX - 1]))
+			return false;
+
+		// 왼쪽 아래로 한 칸 이동
 		iX--;
 		iY++;
 
-		if (!this->CheckRange(iX, iY))
-			break;
+		// 맵을 벗어났거나 현재 칸이 장애물이면 종료
+		if (!this->CheckRange(iX, iY) || (en_TILE_FIX_OBSTACLE == map[iY][iX]))
+			return false;
 
-		if ((0 > (iX - 1)) || (en_TILE_FIX_OBSTACLE == map[iY][iX]))
-			break;
-
+		// 지금 위치가 목적지이면 노드 만들고 종료
 		if (this->CheckDestination(iX, iY))
 		{
-			*iMiddleOutX = iX;
-			*iMiddleOutY = iY;
-			*iOutX = (-1);
-			//*iOutY = (-1);
+			if (NULL == pDiagonalNode)
+				this->CreateNode(pParents, iX, iY, en_DIR_NN);
+			else
+				this->CreateNode(pDiagonalNode, iX, iY, en_DIR_NN);
+
 			return true;
 		}
 
-		if (this->Jump_DirDD(iX, iY, iOutX, iOutY))
+		// 아래 쪽 두 칸 밑이 벽이 아니면
+		if ((iY + 1) <= (this->_height - 1))
 		{
-			*iMiddleOutX = iX;
-			*iMiddleOutY = iY;
-			*byOutDir = en_DIR_DD;
-			return true;
+			if (en_TILE_FIX_OBSTACLE == this->map[iY][iX + 1] &&
+				en_TILE_NONE == this->map[iY+ 1][iX + 1] &&
+				en_TILE_NONE == this->map[iY + 1][iX])
+			{
+				if (NULL == pDiagonalNode)
+					pDiagonalNode = this->CreateNode(pParents, iX, iY, en_DIR_LD);
+				else
+				{
+					if (iX != pDiagonalNode->_iPosX || iY != pDiagonalNode->_iPosY)
+					{
+						pDiagonalNode = this->CreateNode(pDiagonalNode, iX, iY, en_DIR_LD);
+					}
+				}
+
+				this->CreateNode(pDiagonalNode, (iX - 1), (iY - 1), en_DIR_RD);
+			}
+		}
+		// 왼 쪽 두 칸 옆이 벽이 아니면
+		else if (0 <= (iX - 1))
+		{
+			if (en_TILE_FIX_OBSTACLE == this->map[iY - 1][iX] &&
+				en_TILE_NONE == this->map[iY - 1][iX - 1] &&
+				en_TILE_NONE == this->map[iY][iX - 1])
+			{
+				if (NULL == pDiagonalNode)
+					pDiagonalNode = this->CreateNode(pParents, iX, iY, en_DIR_LD);
+				else
+				{
+					if (iX != pDiagonalNode->_iPosX || iY != pDiagonalNode->_iPosY)
+					{
+						pDiagonalNode = this->CreateNode(pDiagonalNode, iX, iY, en_DIR_LD);
+					}
+				}
+
+				this->CreateNode(pDiagonalNode, (iX - 1), (iY - 1), en_DIR_LU);
+			}
+		}
+		
+		// 아랫 쪽 순회 중 중간 노드를 만나면 현재 방향 노드 만들고 종료.
+		// 만약 찾은 위치가 목적지면 목적지까지 만들고 종료
+		if (this->Jump_DirDD(iX, iY, &iOutX, &iOutY))
+		{
+			if (NULL == pDiagonalNode)
+				pDiagonalNode = this->CreateNode(pParents, iX, iY, en_DIR_LD);
+			else
+			{
+				if (iX != pDiagonalNode->_iPosX || iY != pDiagonalNode->_iPosY)
+				{
+					pDiagonalNode = this->CreateNode(pDiagonalNode, iX, iY, en_DIR_LD);
+				}
+			}
+
+			if (this->_iEndX == iOutX && this->_iEndY == iOutY)
+			{
+				this->CreateNode(pDiagonalNode, iOutX, iOutY, en_DIR_NN);
+				return true;
+			}
+
+			if (false == bLoop)
+				return true;
 		}
 
-		if (this->Jump_DirLL(iX, iY, iOutX, iOutY))
+		// 왼 쪽 순회 중 중간 노드를 만나면 현재 방향 노드 만들고 종료.
+		// 만약 찾은 위치가 목적지면 목적지까지 만들고 종료
+		if (this->Jump_DirLL(iX, iY, &iOutX, &iOutY))
 		{
-			*iMiddleOutX = iX;
-			*iMiddleOutY = iY;
-			*byOutDir = en_DIR_LL;
-			return true;
+			if (NULL == pDiagonalNode)
+				pDiagonalNode = this->CreateNode(pParents, iX, iY, en_DIR_LD);
+			else
+			{
+				if (iX != pDiagonalNode->_iPosX || iY != pDiagonalNode->_iPosY)
+				{
+					pDiagonalNode = this->CreateNode(pDiagonalNode, iX, iY, en_DIR_LD);
+				}
+			}
+
+			if (this->_iEndX == iOutX && this->_iEndY == iOutY)
+			{
+				this->CreateNode(pDiagonalNode, iOutX, iOutY, en_DIR_NN);
+				return true;
+			}
+
+			if (false == bLoop)
+				return true;
 		}
 	}
 
@@ -891,57 +1036,135 @@ bool CJumpPointSearch::Jump_DirLD(int iInX, int iInY, int *iMiddleOutX, int *iMi
 
 /////////////////////////////////////////////////////////////////////
 //
-//	함수 : Jump_DirLU(short iInX, short iInY, short *iMiddleOutX, short *iMiddleOutY, short *iOutX, short *iOutY, BYTE *byOutDir)
+//	함수 : Jump_DirLU(NODE *pParents, int iPosX, int iPosY, bool bLoop)
 //	인자 : 
-//		short iInX			: 로직을 시작할 X좌표
-//		short iInY			: 로직을 시작할 Y좌표
-//		short iMiddleOutX	: 중간 노드 생성하기 전 경로 노드의 X좌표
-//		short iMiddleOutY	: 중간 노드 생성하기 전 경로 노드의 Y좌표
-//		WORD *iOutX			: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 세팅한다.
-//		WORD *iOutY			: 목적지를 찾았거나 중간 노드 생성 위치를 찾으면 세팅한다.
-//		BYTE *byOutDir		: 어느 방향 로직에서 찾았는지 세팅
+//		NODE *	: 노드 생성 시 부모 노드로 연결할 노드 포인터
+//		int		: 로직을 시작할 X 좌표
+//		int		: 로직을 시작할 Y 좌표
+//		bool	: 중간 노드를 찾더라도 해당 방향으로 계속 탐색할지 여부
 //
-//	로직 실행할 노드의 위치에서 왼쪽 윗 방향으로 검색하는 함수
+//	로직 실행할 노드의 위치에서 왼 쪽 윗 방향으로 검색하는 함수
 /////////////////////////////////////////////////////////////////////
-bool CJumpPointSearch::Jump_DirLU(int iInX, int iInY, int *iMiddleOutX, int *iMiddleOutY, int *iOutX, int *iOutY, BYTE *byOutDir)
+bool CJumpPointSearch::Jump_DirLU(NODE *pParents, int iPosX, int iPosY, bool bLoop)
 {
-	int iX = iInX;
-	int iY = iInY;
+	int iX = iPosX;
+	int iY = iPosY;
+	int iOutX;
+	int iOutY;
+	NODE *pDiagonalNode = NULL;
 
 	while (true)
 	{
+		// 왼쪽 한 칸 앞과 위 쪽 한 칸 앞이 둘 다 장애물이면 종료
+		if ((en_TILE_FIX_OBSTACLE == map[iY - 1][iX]) &&
+			(en_TILE_FIX_OBSTACLE == map[iY][iX - 1]))
+			return false;
+
 		iX--;
 		iY--;
 
-		if (!this->CheckRange(iX, iY))
-			break;
+		// 맵을 벗어났거나 현재 칸이 장애물이면 종료
+		if (!this->CheckRange(iX, iY) || (en_TILE_FIX_OBSTACLE == map[iY][iX]))
+			return false;
 
-		if ((0 > (iX - 1)) || (en_TILE_FIX_OBSTACLE == map[iY][iX]))
-			break;
-
+		// 지금 위치가 목적지이면 노드 만들고 종료
 		if (this->CheckDestination(iX, iY))
 		{
-			*iMiddleOutX = iX;
-			*iMiddleOutY = iY;
-			*iOutX = (-1);
-			//*iOutY = (-1);
+			if (NULL == pDiagonalNode)
+				this->CreateNode(pParents, iX, iY, en_DIR_NN);
+			else
+				this->CreateNode(pDiagonalNode, iX, iY, en_DIR_NN);
+
 			return true;
 		}
 
-		if (this->Jump_DirLL(iX, iY, iOutX, iOutY))
+		// 왼 쪽 두 칸 옆이 벽이 아니면
+		if (0 <= (iX - 1))
 		{
-			*iMiddleOutX = iX;
-			*iMiddleOutY = iY;
-			*byOutDir = en_DIR_LL;
-			return true;
+			if (en_TILE_FIX_OBSTACLE == this->map[iY + 1][iX] &&
+				en_TILE_NONE == this->map[iY + 1][iX - 1] &&
+				en_TILE_NONE == this->map[iY][iX - 1])
+			{
+				if (NULL == pDiagonalNode)
+					pDiagonalNode = this->CreateNode(pParents, iX, iY, en_DIR_LU);
+				else
+				{
+					if (iX != pDiagonalNode->_iPosX || iY != pDiagonalNode->_iPosY)
+					{
+						pDiagonalNode = this->CreateNode(pDiagonalNode, iX, iY, en_DIR_LU);
+					}
+				}
+
+				this->CreateNode(pDiagonalNode, (iX - 1), (iY - 1), en_DIR_LD);
+			}
+		}
+		// 위 쪽 두칸 위가 벽이 아니면
+		else if (0 <= (iY - 1))
+		{
+			if (en_TILE_FIX_OBSTACLE == this->map[iY][iX + 1] &&
+				en_TILE_NONE == this->map[iY - 1][iX] &&
+				en_TILE_NONE == this->map[iY - 1][iX + 1])
+			{
+				if (NULL == pDiagonalNode)
+					pDiagonalNode = this->CreateNode(pParents, iX, iY, en_DIR_LU);
+				else
+				{
+					if (iX != pDiagonalNode->_iPosX || iY != pDiagonalNode->_iPosY)
+					{
+						pDiagonalNode = this->CreateNode(pDiagonalNode, iX, iY, en_DIR_LU);
+					}
+				}
+
+				this->CreateNode(pDiagonalNode, (iX - 1), (iY - 1), en_DIR_RU);
+			}
 		}
 
-		if (this->Jump_DirUU(iX, iY, iOutX, iOutY))
+		// 왼 쪽 순회 중 중간 노드를 만나면 현재 방향 노드 만들고 종료.
+		// 만약 찾은 위치가 목적지면 목적지까지 만들고 종료
+		if (this->Jump_DirLL(iX, iY, &iOutX, &iOutY))
 		{
-			*iMiddleOutX = iX;
-			*iMiddleOutY = iY;
-			*byOutDir = en_DIR_UU;
-			return true;
+			if (NULL == pDiagonalNode)
+				pDiagonalNode = this->CreateNode(pParents, iX, iY, en_DIR_LU);
+			else
+			{
+				if (iX != pDiagonalNode->_iPosX || iY != pDiagonalNode->_iPosY)
+				{
+					pDiagonalNode = this->CreateNode(pDiagonalNode, iX, iY, en_DIR_LU);
+				}
+			}
+
+			if (this->_iEndX == iOutX && this->_iEndY == iOutY)
+			{
+				this->CreateNode(pDiagonalNode, iOutX, iOutY, en_DIR_NN);
+				return true;
+			}
+
+			if (false == bLoop)
+				return true;
+		}
+
+		// 위 쪽 순회 중 중간 노드를 만나면 현재 방향 노드 만들고 종료.
+		// 만약 찾은 위치가 목적지면 목적지까지 만들고 종료
+		if (this->Jump_DirUU(iX, iY, &iOutX, &iOutY))
+		{
+			if (NULL == pDiagonalNode)
+				pDiagonalNode = this->CreateNode(pParents, iX, iY, en_DIR_LU);
+			else
+			{
+				if (iX != pDiagonalNode->_iPosX || iY != pDiagonalNode->_iPosY)
+				{
+					pDiagonalNode = this->CreateNode(pDiagonalNode, iX, iY, en_DIR_LU);
+				}
+			}
+
+			if (this->_iEndX == iOutX && this->_iEndY == iOutY)
+			{
+				this->CreateNode(pDiagonalNode, iOutX, iOutY, en_DIR_NN);
+				return true;
+			}
+
+			if (false == bLoop)
+				return true;
 		}
 	}
 
@@ -955,11 +1178,6 @@ bool CJumpPointSearch::CheckRange(int iPosX, int iPosY)
 	else
 		return true;
 }
-
-//bool CJumpPointSearch::Compare(const NODE &a, const NODE &b)
-//{
-//	return a._iFitness < b._iFitness;
-//}
 
 void CJumpPointSearch::CompleteFind(NODE *pNode, PATH *pOut, int *iOutCount)
 {
