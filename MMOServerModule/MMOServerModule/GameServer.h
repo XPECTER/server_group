@@ -7,6 +7,7 @@
 #include "Field.h"
 #include "JumpPointSearch.h"
 #include "DBConnector.h"
+#include "Pattern.h"
 
 #define dfAUTH_PACKET_PROC_REPEAT 1
 #define dfGAME_PACKET_PROC_REPEAT 3
@@ -26,6 +27,11 @@ struct st_SESSION_KEY
 	char	_sessionKey[64];
 	__int64	_timeoutTick;
 };
+
+//enum en_CHARACTER_TYPE
+//{
+//	en_CHARACTER_TYPE_ORC
+//};
 
 class CGameServer : public CMMOServer
 {
@@ -106,6 +112,10 @@ protected:
 		void PacketProc_MoveCharacter(CPacket *pRecvPacket);	// 캐릭터 이동
 		
 		void PacketProc_StopCharacter(CPacket *pRecvPacket);	// 캐릭터 정지
+
+		void PacketProc_Attack1(CPacket *pRecvPacket);			// 1번 공격 요청
+
+		void PacketProc_Attack2(CPacket *pRecvPacket);			// 2번 공격 요청
 #pragma endregion packetproc_game
 
 #pragma region packetproc_etc
@@ -202,14 +212,17 @@ protected:
 
 		void SendPacket_MoveSector(void);
 
+		void SendPacket_MoveStop(void);
+
 		void SendPacket_Sync(void);
+
 #pragma endregion sendpacket
 	
 		// 기타 필요한 로직
 	private:
 		bool CheckErrorRange(float PosX, float PosY);
 
-		void MoveStop(void);
+		void MoveStop(bool bSend);
 
 	private:
 		CGameServer *_pGameServer;
@@ -222,7 +235,6 @@ protected:
 		
 		BYTE	_byParty;						// 파티 번호 (1번 또는 2번)
 		BYTE	_characterType;					// 캐릭터 타입 (1번 파티는 1, 2, 3 / 2번 파티는 3, 4, 5)
-		
 
 		// GameTh에서 세팅
 		int		_serverX_curr;					// 현재 타일 X 좌표
@@ -244,11 +256,18 @@ protected:
 		PATH	_path[dfPATH_POINT_MAX];		// 이동할 경로
 		int		_path_curr;						// 현재 경로
 		int		_pathCount;						// 경로 개수
-		__int64 _nextTileTime;					// 다음 타일로 이동할 시간
+		ULONGLONG _nextTileTime;				// 다음 타일로 이동할 시간
+		
 		PATH	*_pPath;						// 경로를 지정할 포인터
+		int		_goal_X;
+		int		_goal_Y;
 
 		int		_iHP;							// 체력
 		BYTE	_byDie;							// 사망 플래그
+
+		CLIENT_ID	_targetID;					// 타켓 ID
+		CPlayer		*_targetPtr;				// 타켓 포인터. 포인터만 쓰면 위험할 수 있으므로 두 개를 같이 사용
+		int		_iAttackType;					// 공격 타입 (1번, 2번이 있고 3번은 추가 될지 모르겠음)
 	};
 
 	typedef std::map<CLIENT_ID, CPlayer *> sectorMap;
@@ -274,7 +293,6 @@ public:
 		~CSector();
 
 		/////////////////////////////////////////////////////////////////////
-		//
 		//	함수 : MoveSector
 		//	인자 : 
 		//	(in)	int			iCurrX		: 이동 전 X축 섹터 좌표
@@ -291,7 +309,6 @@ public:
 		bool MoveSector(int iCurrX, int iCurrY, int iMoveX, int iMoveY, CLIENT_ID clientID, CPlayer *pPlayer);
 		
 		/////////////////////////////////////////////////////////////////////
-		//
 		//	함수 : GetAroundSector
 		//	인자 : 
 		//	(in)	int iSectorX			: 이동 전 X축 타일 좌표
@@ -303,7 +320,6 @@ public:
 		void GetAroundSector(int iSectorX, int iSectorY, stAROUND_SECTOR *around);
 		
 		/////////////////////////////////////////////////////////////////////
-		//
 		//	함수 : GetUpdateSector
 		//	인자 : 
 		//	(in)	stAROUND_SECTOR *removeSector	: 삭제할 섹터 좌표를 저장할 구조체
@@ -359,36 +375,29 @@ private:
 	void SendPacket_SectorSwitch(CPacket *pSendPacket_remove, int iRemoveSectorX, int iRemoveSectorY, CPacket *pSendPacket_add, int iAddSectorX, int iAddSectorY, CPlayer *pexception);
 
 private:
-	CLanClient_Login *_lanClient_Login;
-	CLanClient_Agent *_lanClient_Agent;
-	CLanClient_Monitoring *_lanClient_Monitoring;
+	CLanClient_Login *_lanClient_Login;						// 로그인 서버로 접속할 클라이언트
+	CLanClient_Agent *_lanClient_Agent;						// 에이전트로 접속할 클라이언트
+	CLanClient_Monitoring *_lanClient_Monitoring;			// 모니터링 서버로 접속할 클라이언트
 
-	// 실제 플레이어를 생성할 배열
-	CPlayer *_pPlayerArray;
+	CPlayer *_pPlayerArray;									// 실제 플레이어를 생성할 배열
 
-	// 로그인 서버로부터 받은 키를 저장할 자료구조
-	std::map<__int64, st_SESSION_KEY *> _sessionKeyMap;
-	SRWLOCK _sessionKeyMapLock;
+	std::map<__int64, st_SESSION_KEY *> _sessionKeyMap;		// 로그인 서버로부터 받은 키를 저장할 자료구조
+	SRWLOCK _sessionKeyMapLock;								// 로그인 클라이언트와 세션키 맵을 같이 사용할 것이기 때문에 lock이 필요하다.
 
-	// 하트비트용
-	__int64 _updateTick;
+	__int64 _updateTick;									// 하트비트용
 
-	// 데이터베이스
-	AccountDB	*_database_Account;
-	GameDB		*_database_Game;
-	LogDB		*_database_Log;
-
-	// 데이터베이스 메시지 풀
-	CMemoryPool<st_DBWRITER_MSG> _databaseMsgPool;
-
-	// 데이터베이스 메시지 큐
-	CLockFreeQueue<st_DBWRITER_MSG *> _databaseMsgQueue;
+	AccountDB	*_database_Account;							// Account Database
+	GameDB		*_database_Game;							// Game Database
+	LogDB		*_database_Log;								// Log Database
 	
-	CJumpPointSearch *_jps;			// 길찾기 알고리즘
+	CMemoryPool<st_DBWRITER_MSG> _databaseMsgPool;			// 데이터베이스 메시지 풀
+	CLockFreeQueue<st_DBWRITER_MSG *> _databaseMsgQueue;	// 데이터베이스 메시지 큐
+	
+	CJumpPointSearch *_jps;									// 길찾기 알고리즘
 
-	CField<CLIENT_ID> *_field;		// ClientID를 관리하는 필드
+	CField<CLIENT_ID> *_field;								// ClientID를 관리하는 필드(충돌처리용)
 		
-	CSector *_sector;				// ClientID와 CPlayer *를 관리하는 Sector
+	CSector *_sector;										// ClientID와 CPlayer *를 관리하는 Sector
 
 	//모니터링 용도
 public:

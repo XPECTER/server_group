@@ -134,7 +134,7 @@
 //
 // 실제 게임서버는 이에 X 2 한 사이즈를 사용.  dfMAP_TILE_X_MAX / dfMAP_TILE_Y_MAX
 //---------------------------------------------
-#define dfMAP_OBSTACLE_FILE_X_MAX	200
+#define dfMAP_OBSTACLE_FILE_X_MAX	300
 #define dfMAP_OBSTACLE_FILE_Y_MAX	100
 
 //---------------------------------------------
@@ -147,6 +147,14 @@
 // JumpPointSearch 길찾기 Open 탐색 최대횟수.
 //---------------------------------------------
 #define dfPATH_OPEN_MAX				30
+
+
+
+//---------------------------------------------
+// JumpPointSearch 길찾기 Jump 깊이 최대횟수.
+//---------------------------------------------
+#define dfPATH_JUMP_MAX				50
+
 
 
 //---------------------------------------------
@@ -177,7 +185,7 @@
 // 공격위치 알림 패킷 전송 간격 ms (UnderAttack Packet)
 //
 //---------------------------------------------
-#define dfUNDER_ATTACK_SEND_TIME		7000
+#define dfUNDER_ATTACK_SEND_TIME		1000
 
 
 
@@ -216,45 +224,44 @@
 //---------------------------------------------
 // 최초 캐릭터 생성 위치
 //
-// Party 1		( X : 68 ~ 138 / Y : 156 ~ 184 )
+// Party 1		( X : 122 ~ 158 / Y : 14 ~ 30 )
 //
-//	left		34.0f		68
-//	top			22.0f		44	-> 156
-//	right		69.0f		138
-//	bottom		8.0f		16	-> 184
+//	left		61.0f		122
+//	top			93.0f		14
+//	right		79.0f		158
+//	bottom		85.0f		30
 //
 // 
 //
-// Party 2		( X : 68 ~ 138 / Y : 12 ~ 26 )
+// Party 2		( X : 124 ~ 160 / Y : 136 ~ 162 )
 //
-//	left		34.0f		68
-//	top			94.0f		188 -> 12
-//	right		75.0f		150
-//	bottom		87.0f		174 -> 26
+//	left		62.0f		124
+//	top			32.0f		136
+//	right		80.0f		160
+//	bottom		19.0f		162
 //
 //
-// Dummy		( X : 221 ~ 380 / Y : 20 ~ 184 )
+// Dummy		( X : 221 ~ 590 / Y : 20 ~ 184 )
 //
 // AccountNo 가 dfDUMMY_ACCOUNTNO_LIMIT 이하인 유저.
 //
 //	left		110.0f		220
 //	top			90.0f		180 -> 20
-//	right		190.0f		380
+//	right		190.0f		590
 //	bottom		10.0f		20	-> 190
 //
 //---------------------------------------------
-#define dfCREATE_PLAYER_X		(85 + (rand() % 21))			// 중립캐릭터인듯?
+#define dfCREATE_PLAYER_X		(85 + (rand() % 21))
 #define dfCREATE_PLAYER_Y		(93 + (rand() % 31))
 
-#define dfCREATE_PLAYER_X_PARTY1		(68 + (rand() % 70))
-#define dfCREATE_PLAYER_Y_PARTY1		(156 + (rand() % 29))
+#define dfCREATE_PLAYER_X_PARTY1		(122 + (rand() % 37))
+#define dfCREATE_PLAYER_Y_PARTY1		(14 + (rand() % 17))
 
-#define dfCREATE_PLAYER_X_PARTY2		(68 + (rand() % 70))
-#define dfCREATE_PLAYER_Y_PARTY2		(12 + (rand() % 15))
+#define dfCREATE_PLAYER_X_PARTY2		(124 + (rand() % 37))
+#define dfCREATE_PLAYER_Y_PARTY2		(136 + (rand() % 27))
 
-#define dfCREATE_PLAYER_X_DUMMY			(221 + (rand() % 160))
-#define dfCREATE_PLAYER_Y_DUMMY			(20 + (rand() % 165))
-
+#define dfCREATE_PLAYER_X_DUMMY(AccountNo)		(221 + ((AccountNo + rand() % 50) % 369))
+#define dfCREATE_PLAYER_Y_DUMMY(AccountNo)		(20 + ((AccountNo + rand() % 50) % 165))
 
 
 
@@ -347,17 +354,16 @@ inline ULONGLONG NextTileTime(en_DIRECTION Dir)
 	case eMOVE_RR:
 	case eMOVE_UU:
 	case eMOVE_DD:
-		iNextTime = 130;	// 130
+		iNextTime = 160;	// 130 // 160
 		break;
 	case eMOVE_RU:
 	case eMOVE_LU:
 	case eMOVE_LD:
 	case eMOVE_RD:
-		iNextTime = 210;
+		iNextTime = 225;	// 210 // 225
 		break;
 	}
-
-	return time(NULL) + iNextTime;
+	return GetTickCount64() + iNextTime;
 }
 
 

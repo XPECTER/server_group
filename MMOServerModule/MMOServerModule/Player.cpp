@@ -51,12 +51,13 @@ void CGameServer::CPlayer::Player_Init(CGameServer *pGameServer)
 	this->_rotation = eMOVE_NN;
 	this->_bMove = false;
 	//this->_path;
-	this->_pathCount = -1;
+	this->_pathCount = 0;
 	this->_pPath = NULL;
 	
 	this->_iHP = 0;
 	this->_byDie = 0;
 	
+	this->_targetID = -1;
 }
 
 void CGameServer::CPlayer::CheckHeartBeat(void)
@@ -67,58 +68,119 @@ void CGameServer::CPlayer::CheckHeartBeat(void)
 	return;
 }
 
+
+/////////////////////////////////////////////////////////////////////
+//	함수 : Action_Move()
+//
+//	1. 유저가 게임상태인지 확인(모든 유저 대상 Loop를 하기 때문)
+//	
+//	2. 다음 경로가 있는지 확인
+//
+//	3. 이동할 시간이 되었는지 확인
+//		3-1. 목적지 좌표로 가는 다음 칸 방향 구하기
+//		3-2. 다음 타일 좌표 구하기
+//		3-3. 다음 타일 이동 시간 구하기
+//		3-4. 타일 이동
+//		3-5. 타일 이동 후 섹터가 바뀌었으면 섹터 좌표 세팅.
+//		3-6. 신규 섹터에는 캐릭터 생성 패킷, 내가 이동 중이였다면 이동 패킷을 보냄
+//		3-7. 제거 섹터에는 캐릭터 제거 패킷 보냄
+//		3-8. 신규 섹터에 있는 유저의 정보를 얻어 해당 유저에게 캐릭터 생성 패킷, 이동 중이였다면 이동 패킷까지 보냄
+//
+/////////////////////////////////////////////////////////////////////
 void CGameServer::CPlayer::Action_Move()
 {
-	/*if (NULL == this->_pPath)
-		return;*/
-
 	int iCurrTileX;
 	int iCurrTileY;
 	int iNextTileX;
 	int iNextTileY;
+	int iDestX;
+	int iDestY;
+	en_DIRECTION rotation;
 
-	// 멈춰있거나 갈 길이 없음.
-	if (0 == this->_pathCount)
-	{
-		this->_bMove = false;
+	if (MODE_GAME != this->_iSessionMode)
 		return;
-	}
-	else
+
+	if (NULL == this->_pPath)
+		return;
+
+	if (GetTickCount64() >= this->_nextTileTime)
 	{
-		if (time(NULL) >= this->_nextTileTime)
+		iCurrTileX = this->_serverX_curr;
+		iCurrTileY = this->_serverY_curr;
+		iDestX = POS_to_TILE_X(this->_pPath[this->_path_curr].X);
+		iDestY = POS_to_TILE_Y(this->_pPath[this->_path_curr].Y);
+
+		if (iCurrTileX == iDestX && iCurrTileY == iDestY)
 		{
-			iCurrTileX = this->_serverX_curr;
-			iCurrTileY = this->_serverY_curr;
-
-			MoveTile(this->_rotation, iCurrTileX, iCurrTileY, &iNextTileX, &iNextTileY);
-
-			if ((-1) != iNextTileX)
+			if (this->_pathCount == ++this->_path_curr)
 			{
-				if (this->_pGameServer->_field->MoveTileObject(iCurrTileX, iCurrTileY, iNextTileX, iNextTileY, this->_clientID))
-				{
-					this->_sectorX_prev = this->_sectorX_curr;
-					this->_sectorY_prev = this->_sectorY_curr;
-					this->_sectorX_curr = TILE_to_SECTOR_X(iNextTileX);
-					this->_sectorY_curr = TILE_to_SECTOR_Y(iNextTileY);
-
-					if ((this->_sectorX_prev != this->_sectorX_curr) || (this->_sectorY_prev != this->_sectorY_curr))
-						this->_pGameServer->_sector->MoveSector(this->_sectorX_prev, this->_sectorY_prev, this->_sectorX_curr, this->_sectorY_curr, this->_clientID, this);
-
-				}
+				this->_pPath = NULL;
+				return;
 			}
 
-
+			iDestX = POS_to_TILE_X(this->_pPath[this->_path_curr].X);
+			iDestY = POS_to_TILE_Y(this->_pPath[this->_path_curr].Y);
 		}
+
+		rotation = MoveDirection(iCurrTileX, iCurrTileY, iDestX, iDestY);
+		this->_rotation = rotation;
+		MoveTile(rotation, iCurrTileX, iCurrTileY, &iNextTileX, &iNextTileY);
+		this->_nextTileTime = NextTileTime(rotation);
+
+		if ((-1) != iNextTileX)
+		{
+			this->_serverX_prev = iCurrTileX;
+			this->_serverY_prev = iCurrTileY;
+			this->_serverX_curr = iNextTileX;
+			this->_serverY_curr = iNextTileY;
+
+			this->_clientPosX = TILE_to_POS_X(this->_serverX_curr);
+			this->_clientPosY = TILE_to_POS_Y(this->_serverY_curr);
+
+			this->_sectorX_prev = this->_sectorX_curr;
+			this->_sectorY_prev = this->_sectorY_curr;
+			this->_sectorX_curr = TILE_to_SECTOR_X(iNextTileX);
+			this->_sectorY_curr = TILE_to_SECTOR_Y(iNextTileY);
+
+			SYSLOG(L"GAME", LOG::LEVEL_DEBUG, L" # Cooldinate / [ServerX : %d][ServerY : %d][ClientX : %f][ClientY : %f]", this->_serverX_curr, this->_serverY_curr, this->_clientPosX, this->_clientPosY);
+
+			if (!this->_pGameServer->_field->MoveTileObject(iCurrTileX, iCurrTileY, iNextTileX, iNextTileY, this->_clientID))
+				CCrashDump::Crash();
+
+			if ((this->_sectorX_prev != this->_sectorX_curr) || (this->_sectorY_prev != this->_sectorY_curr))
+			{
+				if (!this->_pGameServer->_sector->MoveSector(this->_sectorX_prev, this->_sectorY_prev, this->_sectorX_curr, this->_sectorY_curr, this->_clientID, this))
+					CCrashDump::Crash();
+
+				// 섹터가 변경되면 주변 섹터에게 캐릭터 생성 / 캐릭터 삭제 패킷 각각 보내고
+				SendPacket_MoveSector();
+
+				// 만약 이동중이였던 캐릭터가 있다면 캐릭터 이동패킷도 보내야한다.
+
+			}
+		}
+		else
+			CCrashDump::Crash();
 	}
-	
-		
-	
-
-
+	else
+		return;
 }
 
+
+/////////////////////////////////////////////////////////////////////
+//	함수 : Action_Attack()
+//
+//	1. 유저가 게임상태인지 확인(모든 유저 대상 Loop를 하기 때문)
+//	
+//
+/////////////////////////////////////////////////////////////////////
 void CGameServer::CPlayer::Action_Attack()
 {
+	if (MODE_GAME != this->_iSessionMode)
+		return;
+
+
+
 	return;
 }
 
@@ -268,6 +330,18 @@ bool CGameServer::CPlayer::OnGame_PacketProc(void)
 					break;
 				}
 
+				case en_PACKET_CS_GAME_REQ_ATTACK1_TARGET:
+				{
+					PacketProc_Attack1(pRecvPacket);
+					break;
+				}
+
+				case en_PACKET_CS_GAME_REQ_ATTACK2_TARGET:
+				{
+					PacketProc_Attack2(pRecvPacket);
+					break;
+				}
+
 				default:
 				{
 					SYSLOG(L"SYSTEM", LOG::LEVEL_DEBUG, L"Wrong type packet");
@@ -350,11 +424,15 @@ bool CGameServer::CPlayer::CheckErrorRange(float PosX, float PosY)
 		return false;
 }
 
-void CGameServer::CPlayer::MoveStop(void)
+void CGameServer::CPlayer::MoveStop(bool bSend)
 {
 	this->_pPath = NULL;
 	this->_pathCount = 0;
+	this->_bMove = false;
+	this->_path_curr = 0;
 
+	if (bSend)
+		SendPacket_MoveStop();
 	return;
 }
 
@@ -484,6 +562,9 @@ void CGameServer::CPlayer::PacketProc_MoveCharacter(CPacket *pRecvPacket)
 		this->_serverY_prev = this->_serverY_curr;
 		this->_serverX_curr = POS_to_TILE_X(startX);
 		this->_serverY_curr = POS_to_TILE_Y(startY);
+
+		if ((this->_serverX_prev != this->_serverX_curr) || (this->_serverY_prev != this->_serverY_curr))
+			this->_pGameServer->_field->MoveTileObject(this->_serverX_prev, this->_serverY_prev, this->_serverX_curr, this->_serverY_curr, this->_clientID);
 	}
 
 	CPacket *pSendPacket = CPacket::Alloc();
@@ -492,18 +573,28 @@ void CGameServer::CPlayer::PacketProc_MoveCharacter(CPacket *pRecvPacket)
 		MakePacket_ResMoveCharacter(pSendPacket, clientID, (BYTE)this->_pathCount, this->_path);
 		this->_pPath = this->_path;
 		this->_bMove = true;
-		this->_rotation = MoveDirection(this->_serverX_curr, this->_serverY_curr, POS_to_TILE_X(this->_pPath->X), POS_to_TILE_Y(this->_pPath->Y));
-		this->_nextTileTime = time(NULL);
+		//this->_rotation = MoveDirection(this->_serverX_curr, this->_serverY_curr, POS_to_TILE_X(this->_pPath->X), POS_to_TILE_Y(this->_pPath->Y));
+		this->_nextTileTime = GetTickCount64();
+		this->_path_curr = 0;
+
+		this->_goal_X = POS_to_TILE_X(destX);
+		this->_goal_Y = POS_to_TILE_Y(destY);
 	}
 	else
 	{
 		// 길을 찾지 못하면 캐릭터 정지
 		MakePacket_StopCharacter(pSendPacket, clientID, this->_clientPosX, this->_clientPosY, 0xFFFF);
+		MoveStop(false);
 	}
 
-	SendPacket(pSendPacket);
+	//SendPacket(pSendPacket);
+	// 유저를 포함한 주변 3X3 섹터에게 보내야한다.
+	this->_pGameServer->SendPacket_SectorAround(pSendPacket, this->_sectorX_curr, this->_sectorY_curr, NULL);
 	pSendPacket->Free();
 
+	// 이동, 정지 패킷이 오면 공격 중단
+	this->_targetID = -1;
+	this->_targetPtr = NULL;
 	return;
 }
 
@@ -524,11 +615,115 @@ void CGameServer::CPlayer::PacketProc_StopCharacter(CPacket *pRecvPacket)
 	{
 		this->_clientPosX = PosX;
 		this->_clientPosY = PosY;
+		this->_serverX_prev = this->_serverX_curr;
+		this->_serverY_prev = this->_serverY_curr;
 		this->_serverX_curr = POS_to_TILE_X(PosX);
 		this->_serverY_curr = POS_to_TILE_Y(PosY);
+
+		this->_pGameServer->_field->MoveTileObject(_serverX_prev, _serverY_prev, _serverX_curr, _serverY_curr, this->_clientID);
 	}
 
-	MoveStop();
+	MoveStop(false);
+
+	// 이동, 정지 패킷이 오면 공격 중단
+	this->_targetID = -1;
+	this->_targetPtr = NULL;
+	return;
+}
+
+void CGameServer::CPlayer::PacketProc_Attack1(CPacket *pRecvPacket)
+{
+	CLIENT_ID AttackID;
+	CLIENT_ID TargetID;
+	//CPlayer *pAttackPlayer = NULL;
+	CPlayer *pTargetPlayer = NULL;
+	int index;
+
+	*pRecvPacket >> AttackID >> TargetID;
+
+	/*index = EXTRACTCLIENTINDEX(AttackID);
+	pAttackPlayer = &this->_pGameServer->_pPlayerArray[index];
+	if (AttackID != pAttackPlayer->_clientID)
+	{
+		SYSLOG(L"PACKET", LOG::LEVEL_ERROR, L"don`t match player");
+		CCrashDump::Crash();
+		return;
+	}*/
+
+	index = EXTRACTCLIENTINDEX(TargetID);
+	pTargetPlayer = &this->_pGameServer->_pPlayerArray[index];
+	if (TargetID != pTargetPlayer->_clientID)
+	{
+		SYSLOG(L"PACKET", LOG::LEVEL_ERROR, L"don`t match player");
+		CCrashDump::Crash();
+		return;
+	}
+
+	// pAttackPlayer는 this랑 무조건 같을 수 밖에 없지 않나?
+	if (this->_byParty != pTargetPlayer->_byParty)
+	{
+		this->_targetID = TargetID;
+		this->_targetPtr = pTargetPlayer;
+	}
+	else
+	{
+		// 엘프가 엘프 공격할 수 있나요??
+		if ((3 != this->_characterType) && (3 == pTargetPlayer->_characterType))
+		{
+			this->_targetID = TargetID;
+			this->_targetPtr = pTargetPlayer;
+			this->_iAttackType = 1;
+		}
+	}
+
+	return;
+}
+
+void CGameServer::CPlayer::PacketProc_Attack2(CPacket *pRecvPacket)
+{
+	CLIENT_ID AttackID;
+	CLIENT_ID TargetID;
+	//CPlayer *pAttackPlayer = NULL;
+	CPlayer *pTargetPlayer = NULL;
+	int index;
+
+	*pRecvPacket >> AttackID >> TargetID;
+
+	/*index = EXTRACTCLIENTINDEX(AttackID);
+	pAttackPlayer = &this->_pGameServer->_pPlayerArray[index];
+	if (AttackID != pAttackPlayer->_clientID)
+	{
+	SYSLOG(L"PACKET", LOG::LEVEL_ERROR, L"don`t match player");
+	CCrashDump::Crash();
+	return;
+	}*/
+
+	index = EXTRACTCLIENTINDEX(TargetID);
+	pTargetPlayer = &this->_pGameServer->_pPlayerArray[index];
+	if (TargetID != pTargetPlayer->_clientID)
+	{
+		SYSLOG(L"PACKET", LOG::LEVEL_ERROR, L"don`t match player");
+		CCrashDump::Crash();
+		return;
+	}
+
+	// pAttackPlayer는 this랑 무조건 같을 수 밖에 없지 않나?
+	if (this->_byParty != pTargetPlayer->_byParty)
+	{
+		this->_targetID = TargetID;
+		this->_targetPtr = pTargetPlayer;
+	}
+	else
+	{
+		// 엘프가 엘프 공격할 수 있나요??
+		if ((3 != this->_characterType) && (3 == pTargetPlayer->_characterType))
+		{
+			this->_targetID = TargetID;
+			this->_targetPtr = pTargetPlayer;
+			this->_iAttackType = 2;
+		}
+	}
+
 	return;
 }
 #pragma endregion packetproc_game
@@ -705,14 +900,23 @@ void CGameServer::CPlayer::SendPacket_NewCreateCharacter(void)
 		{
 			CPlayer *pPlayer = iter->second;
 
+			if (pPlayer == this)
+				continue;
+
 			pSendPacket = CPacket::Alloc();
 			MakePacket_CreateOtherCharacter(pSendPacket, pPlayer->_clientID, pPlayer->_characterType, pPlayer->_szNickname, pPlayer->_clientPosX, pPlayer->_clientPosY, pPlayer->_rotation, 0, pPlayer->_byDie, pPlayer->_iHP, pPlayer->_byParty);
 			SendPacket(pSendPacket);
 			pSendPacket->Free();
+
+			if (NULL != pPlayer->_pPath)
+			{
+				pSendPacket = CPacket::Alloc();
+				MakePacket_ResMoveCharacter(pSendPacket, pPlayer->_clientID, (pPlayer->_pathCount - pPlayer->_path_curr), pPlayer->_pPath);
+				SendPacket(pSendPacket);
+				pSendPacket->Free();
+			}
 		}
 	}
-
-
 	return;
 }
 
@@ -728,25 +932,116 @@ void CGameServer::CPlayer::SendPacket_RemoveObject_Disconnect(void)
 
 void CGameServer::CPlayer::SendPacket_MoveSector(void)
 {
-	CPacket *pSendPacket_RemoveObject = CPacket::Alloc();
-	MakePacket_RemoveObject(pSendPacket_RemoveObject, this->_clientID);
+	stAROUND_SECTOR addSector, removeSector;
+	CPacket *pSendPacket = NULL;
+	sectorMap *map = NULL;
+	CPlayer *pPlayer = NULL;
+	int iCnt = 0;
 
-	CPacket *pSendPacket_AddObject = CPacket::Alloc();
-	MakePacket_CreateOtherCharacter(pSendPacket_AddObject, this->_clientID, this->_characterType, this->_szNickname, this->_clientPosX, this->_clientPosY, this->_rotation, 0, this->_byDie, this->_iHP, this->_byParty);
+	this->_pGameServer->_sector->GetAroundSector(this->_sectorX_prev, this->_sectorY_prev, &removeSector);
+	this->_pGameServer->_sector->GetAroundSector(this->_sectorX_curr, this->_sectorY_curr, &addSector);
+	this->_pGameServer->_sector->GetUpdateSector(&removeSector, &addSector);
 
-	this->_pGameServer->SendPacket_SectorSwitch(pSendPacket_RemoveObject, this->_sectorX_prev, this->_sectorY_prev, pSendPacket_AddObject, this->_sectorX_curr, this->_sectorY_curr, this);
+	// 1. removeSector - 해당 유저 캐릭터 오브젝트 삭제 패킷 생성
+	pSendPacket = CPacket::Alloc();
+	MakePacket_RemoveObject(pSendPacket, this->_clientID);
+	for (iCnt = 0; iCnt < removeSector._iCount; ++iCnt)
+		this->_pGameServer->SendPacket_SectorOne(pSendPacket, removeSector._around[iCnt]._iSectorX, removeSector._around[iCnt]._iSectorY, NULL);
+	pSendPacket->Free();
 
-	pSendPacket_RemoveObject->Free();
-	pSendPacket_AddObject->Free();
+	// 2. removeSector - 제거 섹터의 유저 캐릭터 오브젝트 삭제 패킷 생성
+	for (iCnt = 0; iCnt < removeSector._iCount; ++iCnt)
+	{
+		map = this->_pGameServer->_sector->GetList(removeSector._around[iCnt]._iSectorX, removeSector._around[iCnt]._iSectorY);
+
+		if (NULL == map)
+			CCrashDump::Crash();
+
+		for (auto iter = map->begin(); iter != map->end(); ++iter)
+		{
+			pPlayer = iter->second;
+
+			if (pPlayer == this)
+				continue;
+
+			pSendPacket = CPacket::Alloc();
+			MakePacket_RemoveObject(pSendPacket, pPlayer->_clientID);
+			SendPacket(pSendPacket);
+			pSendPacket->Free();
+		}
+	}
+
+	// 3. addSector - 해당 유저 캐릭터 오브젝트 생성 패킷 생성
+	pSendPacket = CPacket::Alloc();
+	MakePacket_CreateOtherCharacter(pSendPacket, this->_clientID, this->_characterType, this->_szNickname, this->_clientPosX, this->_clientPosY, this->_rotation, 0, this->_byDie, this->_iHP, this->_byParty);
+	for (iCnt = 0; iCnt < addSector._iCount; ++iCnt)
+		this->_pGameServer->SendPacket_SectorOne(pSendPacket, addSector._around[iCnt]._iSectorX, addSector._around[iCnt]._iSectorY, NULL);
+	pSendPacket->Free();
+
+	// 4. addSector - 해당 유저가 이동 중이였다면 캐릭터 이동 패킷 생성
+	if (NULL != this->_pPath)
+	{
+		pSendPacket = CPacket::Alloc();
+		MakePacket_ResMoveCharacter(pSendPacket, this->_clientID, (this->_pathCount - this->_path_curr), this->_pPath);
+		for (iCnt = 0; iCnt < addSector._iCount; ++iCnt)
+			this->_pGameServer->SendPacket_SectorOne(pSendPacket, addSector._around[iCnt]._iSectorX, addSector._around[iCnt]._iSectorY, NULL);
+		pSendPacket->Free();
+	}
+	
+	// 5. addSector - 신규 섹터의 캐릭터 정보를 해당 유저에게 줄 패킷 생성
+	for (iCnt = 0; iCnt < addSector._iCount; ++iCnt)
+	{
+		map = this->_pGameServer->_sector->GetList(addSector._around[iCnt]._iSectorX, addSector._around[iCnt]._iSectorY);
+
+		if (NULL == map)
+			CCrashDump::Crash();
+
+		for (auto iter = map->begin(); iter != map->end(); ++iter)
+		{
+			CPlayer *pPlayer = iter->second;
+
+			if (pPlayer == this)
+				continue;
+
+			pSendPacket = CPacket::Alloc();
+			MakePacket_CreateOtherCharacter(pSendPacket, pPlayer->_clientID, pPlayer->_characterType, pPlayer->_szNickname, pPlayer->_clientPosX, pPlayer->_clientPosY, pPlayer->_rotation, 0, pPlayer->_byDie, pPlayer->_iHP, pPlayer->_byParty);
+			SendPacket(pSendPacket);
+			pSendPacket->Free();
+
+			// 6. addSector - 신규 섹터의 캐릭터가 이동중이라면 이동 패킷 생성
+			if (NULL != pPlayer->_pPath)
+			{
+				pSendPacket = CPacket::Alloc();
+				MakePacket_ResMoveCharacter(pSendPacket, pPlayer->_clientID, (pPlayer->_pathCount - pPlayer->_path_curr), pPlayer->_pPath);
+				SendPacket(pSendPacket);
+				pSendPacket->Free();
+			}
+		}
+	}
+}
+
+void CGameServer::CPlayer::SendPacket_MoveStop()
+{
+	CPacket *pSendPacket = CPacket::Alloc();
+	MakePacket_StopCharacter(pSendPacket, this->_clientID, this->_clientPosX, this->_clientPosY, 0xffff);
+	this->_pGameServer->SendPacket_SectorAround(pSendPacket, this->_sectorX_curr, this->_sectorY_curr, NULL);
+	//SendPacket(pSendPacket);
+	pSendPacket->Free();
+
+	return;
 }
 
 void CGameServer::CPlayer::SendPacket_Sync(void)
 {
 	CPacket *pSendPacket = CPacket::Alloc();
 	MakePacket_Sync(pSendPacket, this->_clientID, this->_serverX_curr, this->_serverY_curr);
-	SendPacket(pSendPacket);
+	
+	//SendPacket(pSendPacket);
+	this->_pGameServer->SendPacket_SectorAround(pSendPacket, this->_sectorX_curr, this->_sectorY_curr, NULL);
 	pSendPacket->Free();
 
 	return;
 }
+
+
 #pragma endregion sendpacket

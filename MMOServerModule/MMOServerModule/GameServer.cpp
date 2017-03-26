@@ -4,6 +4,8 @@
 
 CGameServer::CGameServer(int iClientMax) : CMMOServer(iClientMax)
 {
+	QueryPerformanceFrequency(&this->_frequency);
+
 	InitializeSRWLock(&this->_sessionKeyMapLock);
 
 	// LanClient
@@ -104,10 +106,10 @@ void CGameServer::OnGame_Update(void)
 	if (time(NULL) - this->_updateTick > dfGAMETHREAD_HEARTBEAT_TICK)
 		this->_lanClient_Login->SendPacket_HeartBeat(dfTHREAD_TYPE_GAME);
 
-	//for (int iCnt = 0; iCnt < this->_iClientMax; ++iCnt)
-	//{
-	//	//this->_pPlayerArray[iCnt].;
-	//}
+	for (int iCnt = 0; iCnt < this->_iClientMax; ++iCnt)
+	{
+		this->_pPlayerArray[iCnt].Action_Move();
+	}
 	
 	return;
 }

@@ -170,6 +170,7 @@
     <ClInclude Include="LanClient_Monitoring.h" />
     <ClInclude Include="Field.h" />
     <ClInclude Include="MMOServer.h" />
+    <ClInclude Include="Pattern.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
@@ -246,6 +247,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Field.cpp" />
     <ClCompile Include="MMOServer.cpp" />
+    <ClCompile Include="Pattern.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="Sector.cpp" />
     <ClCompile Include="Session.cpp" />

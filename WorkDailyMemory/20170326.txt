@@ -1,0 +1,37 @@
+2017년 03월 26일 일요일
+
+작업 내용
+
+1. GameServer
+	*class CGameServer::CPlayer
+		- 유저 이동 기능 구현 완료
+		
+		- (추가)SendPacket_MoveSector()
+			1단계 : RemoveSector / 내 캐릭터 삭제 패킷을 보낸다.
+			2단계 : RemoveSector / 다른 유저의 캐릭터 삭제 패킷을 나에게 보낸다.
+			3단계 : AddSector / 내 캐릭터 생성 패킷을 보낸다.
+			4단계 : AddSector / 내가 이동 중이였다면 캐릭터 이동 패킷을 보낸다.
+			5단계 : AddSector / 다른 유저의 캐릭터 생성 패킷을 나에게 보낸다.
+			6단계 : AddSector / 다른 유저가 이동중이였다면 캐릭터 이동 패킷을 나에게 보낸다.
+			
+		- (추가)Action_Move()
+			매 루프마다 모든 유저를 돌면서 이동처리를 한다. 이동 시간이 될 떄마다 한 칸씩 움직이며, 섹터가 바뀌었다면 SendPacket_MoveSector()를 호출해서 처리한다.
+			Action_Attack()함수가 추가된다면 내가 타겟을 정했을 때 타겟이 유효하다면 매 루프마다 경로를 갱신할 수도 있다.(미구현)
+			
+		- (추가)PacketProc_Attack1()
+			타겟 아이디가 유효한지, 적군이 맞는지, 적군이 아니라면 엘프 캐릭터인지 검사 후 정보를 세팅한다. 세팅되는 정보는 타겟의 클라이언트 아이디, 타겟의 CPlayer 포인터, 내 공격 타입이다.
+		
+		- (추가)PacketProc_Attack2()
+			타겟 아이디가 유효한지, 적군이 맞는지, 적군이 아니라면 엘프 캐릭터인지 검사 후 정보를 세팅한다. 세팅되는 정보는 타겟의 클라이언트 아이디, 타겟의 CPlayer 포인터, 내 공격 타입이다.
+			
+		- (추가, 미구현)Action_Attack()
+			타겟 아이디가 세팅이 되어있다면 공격을 하는 로직을 추가중
+			
+		- (수정)PacketProc_MoveCharacter()
+			공격 중 이동 패킷이 온다면 공격을 취소하는 로직 추가.
+		
+		- (수정)PacketProc_StopCharacter()
+			공격 중 정지 패킷이 온다면 공격을 취소하는 로직 추가.
+			
+	*SendPacket_SectorSwitch()
+		- CPlayer의 SendPacket_XXXX()에서 처리하는 경우가 많고, 섹터를 이동했는데 패킷을 하나만 보내는 경우가 없었다.

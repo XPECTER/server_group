@@ -1185,7 +1185,7 @@ void CJumpPointSearch::CompleteFind(NODE *pNode, PATH *pOut, int *iOutCount)
 	int iCnt = 0;
 
 	std::stack<NODE *> stack;
-	while (NULL != pCurr->pParent)
+	while (NULL != pCurr)
 	{
 		stack.push(pCurr);
 		pCurr = pCurr->pParent;
