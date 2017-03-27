@@ -4,8 +4,6 @@
 
 CGameServer::CGameServer(int iClientMax) : CMMOServer(iClientMax)
 {
-	QueryPerformanceFrequency(&this->_frequency);
-
 	InitializeSRWLock(&this->_sessionKeyMapLock);
 
 	// LanClient

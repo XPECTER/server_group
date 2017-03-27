@@ -268,6 +268,8 @@ protected:
 		CLIENT_ID	_targetID;					// 타켓 ID
 		CPlayer		*_targetPtr;				// 타켓 포인터. 포인터만 쓰면 위험할 수 있으므로 두 개를 같이 사용
 		int		_iAttackType;					// 공격 타입 (1번, 2번이 있고 3번은 추가 될지 모르겠음)
+
+		BYTE	_byFirstAction;					// 처음 액션을 하지 않았으면 공격 대상이 되지 않음.
 	};
 
 	typedef std::map<CLIENT_ID, CPlayer *> sectorMap;
