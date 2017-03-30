@@ -16,8 +16,10 @@ CGameServer::CGameServer(int iClientMax) : CMMOServer(iClientMax)
 	this->_database_Game = new GameDB(g_Config.szGameDBIP, g_Config.szGameDBUser, g_Config.szGameDBPassword, g_Config.szGameDBName, g_Config.iGameDBPort);
 	this->_database_Log = new LogDB(g_Config.szLogDBIP, g_Config.szLogDBUser, g_Config.szLogDBPassword, g_Config.szLogDBName, g_Config.iLogDBPort);
 
-	// GameTh 하트비트 용도
-	this->_updateTick = time(NULL);
+	UINT64 currTick = GetTickCount64();
+	this->_heartBeatTick = currTick;
+	this->_realUserListTick = currTick;
+	this->_battleAreaListTick = currTick;
 
 	// JPS
 	this->_jps = new CJumpPointSearch(dfMAP_TILE_X_MAX, dfMAP_TILE_Y_MAX);
@@ -101,13 +103,39 @@ void CGameServer::OnAuth_Update(void)
 
 void CGameServer::OnGame_Update(void)
 {
-	if (time(NULL) - this->_updateTick > dfGAMETHREAD_HEARTBEAT_TICK)
-		this->_lanClient_Login->SendPacket_HeartBeat(dfTHREAD_TYPE_GAME);
+	CPacket *pSendPacket = NULL;
+	UINT64 currTick = GetTickCount64();
 
 	for (int iCnt = 0; iCnt < this->_iClientMax; ++iCnt)
 	{
 		this->_pPlayerArray[iCnt].Action_Move();
 	}
+
+	for (int iCnt = 0; iCnt < this->_iClientMax; ++iCnt)
+	{
+		this->_pPlayerArray[iCnt].Action_Attack();
+	}
+	
+	if (currTick - this->_heartBeatTick >= dfGAMETHREAD_HEARTBEAT_TICK)
+	{
+		if (true == this->_lanClient_Login->_bConnected)
+			this->_lanClient_Login->SendPacket_HeartBeat(dfTHREAD_TYPE_GAME);
+		this->_heartBeatTick = currTick;
+	}
+
+	/*if (currTick - this->_battleAreaListTick >= dfUNDER_ATTACK_SEND_TIME)
+	{
+		SendPacket_BattleAreaList();
+		this->_battleAreaPosList.clear();
+		this->_battleAreaListTick = currTick;
+	}*/
+
+	/*if (currTick - this->_realUserListTick >= dfPOS_ALERT_SEND_TIME)
+	{
+		SendPacket_RealUserList();
+		this->_realUserPosArrayCount = 0;
+		this->_realUserListTick = currTick;
+	}*/
 	
 	return;
 }
@@ -343,5 +371,70 @@ void CGameServer::SendPacket_SectorSwitch(CPacket *pSendPacket_remove, int iRemo
 	for (int j = 0; j < addSector._iCount; ++j)
 		SendPacket_SectorOne(pSendPacket_add, addSector._around[j]._iSectorX, addSector._around[j]._iSectorY, pException);
 
+	return;
+}
+
+void CGameServer::SendPacket_BattleAreaList(void)
+{
+	auto iter = this->_battleAreaPosList.begin();
+
+	for (iter; iter != this->_battleAreaPosList.end();)
+	{
+		CPacket *pSendPacket = CPacket::Alloc();
+		MakePacket_BattleAreaList(pSendPacket, (*iter)->_PosX, (*iter)->_PosY);
+		this->SendPacket_BraodCast(pSendPacket);
+		pSendPacket->Free();
+
+		this->_battleAreaPosPool.Free((*iter));
+	}
+
+	return;
+}
+
+void CGameServer::SendPacket_RealUserList(void)
+{
+	CPacket *pSendPacket = CPacket::Alloc();
+	MakePacket_RealUserList(pSendPacket, this->_realUserPosArrayCount);
+	this->SendPacket_BraodCast(pSendPacket);
+	pSendPacket->Free();
+	return;
+}
+
+void CGameServer::MakePacket_BattleAreaList(CPacket *pSendPacket, float battlePosX, float battlePosY)
+{
+	*pSendPacket << (WORD)en_PACKET_CS_GAME_RES_UNDERATTACK_POS;
+	*pSendPacket << battlePosX;
+	*pSendPacket << battlePosY;
+
+	return;
+}
+
+void CGameServer::MakePacket_RealUserList(CPacket *pSendPacket, BYTE count)
+{
+	*pSendPacket << (WORD)en_PACKET_CS_GAME_RES_PLAYER_POS_ALERT;
+	*pSendPacket << count;
+	pSendPacket->Enqueue((char *)this->_realUserPosArray, sizeof(stSECTOR_POS) * count);
+
+	return;
+}
+
+void CGameServer::CollectRealUserSectorPos(int iSectorX, int iSectorY)
+{
+	stSECTOR_POS *pos = NULL;
+	int iCnt = 0;
+
+	for (iCnt; iCnt < this->_realUserPosArrayCount; ++iCnt)
+	{
+		pos = &this->_realUserPosArray[this->_realUserPosArrayCount];
+
+		if ((iSectorX == pos->_iSectorX) || (iSectorY == pos->_iSectorY))
+			return;
+	}
+
+	pos = &this->_realUserPosArray[iCnt];
+	pos->_iSectorX = iSectorX;
+	pos->_iSectorY = iSectorY;
+	this->_realUserPosArrayCount++;
+	
 	return;
 }

@@ -156,7 +156,7 @@ bool AccountDB::ReadDB(en_DB_ACTION_TYPE type, void *pIn, void *pOut)
 				{
 					if (dfDUMMY_ACCOUNTNO_MAX < pInput->AccountNo)
 					{
-						if (0 != memcmp(pInput->SessionKey, row[0], 64))
+						if (0 != memcmp(pInput->SessionKey, row[1], 64))
 							pOutput->Status = dfLOGIN_STATUS_FAIL;
 					}
 				}

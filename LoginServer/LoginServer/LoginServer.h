@@ -19,6 +19,9 @@ class CLoginServer : public CNetServer
 		CLIENT_ID _clientID;
 
 		__int64 _accountNo;
+		wchar_t _szID[21];
+		wchar_t _szNick[21];
+
 		char _sessionKey[64];
 		unsigned __int64 _timeoutTick;
 
@@ -27,6 +30,8 @@ class CLoginServer : public CNetServer
 
 		long _bRecvFlag;				// 로그인 패킷을 받았는지 여부
 		long _bSendFlag;				// 로그인 패킷을 보냈는지 여부
+
+		CPacket *_pLastPacket;
 	};
 
 public:

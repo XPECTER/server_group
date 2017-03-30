@@ -61,6 +61,8 @@ protected:
 		//	
 		//////////////////////////////////////////////////////////
 		void CheckHeartBeat(void);
+
+		void GetSectorPos(int *iSectorX, int *iSectorY);
 		// 상속받은 인터페이스
 	protected:
 #pragma region event
@@ -181,15 +183,19 @@ protected:
 		//		캐릭터 만드는 이유가 0이면 섹터 이동으로 인한 생성
 		//		1이면 신규 접속으로 인한 생성
 		//////////////////////////////////////////////////////////
-		void MakePacket_CreateOtherCharacter(CPacket *pSendPacket, __int64 clientID, BYTE characterType, wchar_t *szNickname, float PosX, float PosY, WORD rotation, BYTE respawn, BYTE die, int hp, BYTE party);
+		void MakePacket_CreateOtherCharacter(CPacket *pSendPacket, CLIENT_ID clientID, BYTE characterType, wchar_t *szNickname, float PosX, float PosY, WORD rotation, BYTE respawn, BYTE die, int hp, BYTE party, BYTE firstAction);
 
 		void MakePacket_RemoveObject(CPacket *pSendPacket, CLIENT_ID clientID);
 
-		void MakePacket_ResMoveCharacter(CPacket *pSendPacket, __int64 clientID, BYTE pathCount, PATH *pPath);
+		void MakePacket_ResMoveCharacter(CPacket *pSendPacket, CLIENT_ID clientID, BYTE pathCount, PATH *pPath, float posX, float posY);
 		
-		void MakePacket_StopCharacter(CPacket *pSendPacket, __int64 clientID, float PosX, float PosY, WORD dir);
+		void MakePacket_StopCharacter(CPacket *pSendPacket, CLIENT_ID clientID, float PosX, float PosY, WORD dir);
 
-		void MakePacket_Sync(CPacket *pSendPacket, __int64 clientID, short tileX, short tileY);
+		void MakePacket_Attack(CPacket *pSendPacket, BYTE attackType, CLIENT_ID attackerID, CLIENT_ID targetID, UINT64 coolTime, float attackPosX, float attackPosY);
+
+		void MakePacket_Damaged(CPacket *pSendPacket, CLIENT_ID damagedID, int value, float PushX, float PushY);
+
+		void MakePacket_Die(CPacket *pSendPacket, CLIENT_ID deadClientID);
 #pragma endregion makepacket_game
 
 #pragma region makepacket_etc
@@ -203,6 +209,8 @@ protected:
 		//	에코 패킷을 받으면 내용 그대로 재조합
 		//////////////////////////////////////////////////////////
 		void MakePacket_ResEcho(CPacket *pSendPacket, __int64 iAccountNo, __int64 SendTick);
+
+		void MakePacket_Sync(CPacket *pSendPacket, __int64 clientID, short tileX, short tileY);
 #pragma endregion makepacket_etc
 		
 #pragma region sendpacket
@@ -214,16 +222,21 @@ protected:
 
 		void SendPacket_MoveStop(void);
 
+		//void SendPacket_Attack1(int damageValue, CLIENT_ID damagedClientID, )
+
 		void SendPacket_Sync(void);
 
 #pragma endregion sendpacket
 	
 		// 기타 필요한 로직
 	private:
-		bool CheckErrorRange(float PosX, float PosY);
+		bool CheckErrorRange(float fPosX, float fPosY);
 
 		void MoveStop(bool bSend);
 
+		void Move(int iTileX, int iTileY);
+
+		
 	private:
 		CGameServer *_pGameServer;
 		
@@ -252,7 +265,7 @@ protected:
 
 		en_DIRECTION	_rotation;				// 방향
 
-		bool	_bMove;							// 현재 이동중인지 여부
+		//bool	_bMove;							// 현재 이동중인지 여부
 		PATH	_path[dfPATH_POINT_MAX];		// 이동할 경로
 		int		_path_curr;						// 현재 경로
 		int		_pathCount;						// 경로 개수
@@ -267,7 +280,8 @@ protected:
 
 		CLIENT_ID	_targetID;					// 타켓 ID
 		CPlayer		*_targetPtr;				// 타켓 포인터. 포인터만 쓰면 위험할 수 있으므로 두 개를 같이 사용
-		int		_iAttackType;					// 공격 타입 (1번, 2번이 있고 3번은 추가 될지 모르겠음)
+		int			_attackType;					// 공격 타입 (1번, 2번이 있고 3번은 추가 될지 모르겠음)
+		ULONGLONG	_nextAttackTime;
 
 		BYTE	_byFirstAction;					// 처음 액션을 하지 않았으면 공격 대상이 되지 않음.
 	};
@@ -347,6 +361,12 @@ public:
 		sectorMap **_map;
 	};
 
+	struct st_CLIENT_POS
+	{
+		float _PosX;
+		float _PosY;
+	};
+
 public:
 	CGameServer(int iClientMax);
 	~CGameServer();
@@ -366,6 +386,9 @@ protected:
 	virtual void OnHeartBeat(void) override;
 
 private:
+	/////////////////////////////////////////////////////////////
+	// 타임아웃 체크 함수
+	/////////////////////////////////////////////////////////////
 	void Schedule_SessionKey(void);
 	void Schedule_Client(void);
 
@@ -375,6 +398,20 @@ private:
 	void SendPacket_SectorOne(CPacket *pSendPacket, int iSectorX, int iSectorY, CPlayer *pException);
 	void SendPacket_SectorAround(CPacket *pSendPacket, int iSectorX, int iSectorY, CPlayer *pException);
 	void SendPacket_SectorSwitch(CPacket *pSendPacket_remove, int iRemoveSectorX, int iRemoveSectorY, CPacket *pSendPacket_add, int iAddSectorX, int iAddSectorY, CPlayer *pexception);
+
+	/////////////////////////////////////////////////////////////
+	// 유저 전체에게 보낼 패킷
+	/////////////////////////////////////////////////////////////
+	void SendPacket_BattleAreaList(void);
+	void SendPacket_RealUserList(void);
+
+	void MakePacket_BattleAreaList(CPacket *pSendPacket, float battlePosX, float battlePosY);
+	void MakePacket_RealUserList(CPacket *pSendPacket, BYTE count);
+
+	/////////////////////////////////////////////////////////////
+	// 실제 유저가 있는 섹터 좌표 수집
+	/////////////////////////////////////////////////////////////
+	void CollectRealUserSectorPos(int iSectorX, int iSectorY);
 
 private:
 	CLanClient_Login *_lanClient_Login;						// 로그인 서버로 접속할 클라이언트
@@ -386,7 +423,7 @@ private:
 	std::map<__int64, st_SESSION_KEY *> _sessionKeyMap;		// 로그인 서버로부터 받은 키를 저장할 자료구조
 	SRWLOCK _sessionKeyMapLock;								// 로그인 클라이언트와 세션키 맵을 같이 사용할 것이기 때문에 lock이 필요하다.
 
-	__int64 _updateTick;									// 하트비트용
+	UINT64 _heartBeatTick;									// 하트비트용
 
 	AccountDB	*_database_Account;							// Account Database
 	GameDB		*_database_Game;							// Game Database
@@ -399,7 +436,15 @@ private:
 
 	CField<CLIENT_ID> *_field;								// ClientID를 관리하는 필드(충돌처리용)
 		
+	UINT64	_battleAreaListTick;
+	UINT64	_realUserListTick;
 	CSector *_sector;										// ClientID와 CPlayer *를 관리하는 Sector
+	
+	CMemoryPool<st_CLIENT_POS> _battleAreaPosPool;
+	std::list<st_CLIENT_POS *> _battleAreaPosList;			// 전쟁 지역 섹터 좌표 리스트
+	
+	stSECTOR_POS	_realUserPosArray[100];					// 실제 유저가 있는 좌표 배열(최대 100개)
+	BYTE			_realUserPosArrayCount;
 
 	//모니터링 용도
 public:

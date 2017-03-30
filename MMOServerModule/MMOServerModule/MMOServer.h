@@ -103,6 +103,8 @@ protected:
 	virtual void OnGame_Update(void) = 0;
 	virtual void OnHeartBeat(void) = 0;
 
+	void SendPacket_BraodCast(CPacket *pSendPacket);
+
 private:
 	bool Session_Init(void);
 	bool Thread_Init(int iThreadNum);

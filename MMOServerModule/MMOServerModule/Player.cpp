@@ -49,7 +49,7 @@ void CGameServer::CPlayer::Player_Init(CGameServer *pGameServer)
 	this->_sectorY_prev = -1;
 	
 	this->_rotation = eMOVE_NN;
-	this->_bMove = false;
+	//this->_bMove = false;
 	//this->_path;
 	this->_pathCount = 0;
 	this->_pPath = NULL;
@@ -103,6 +103,9 @@ void CGameServer::CPlayer::Action_Move()
 	if (NULL == this->_pPath)
 		return;
 
+	if (this->_byDie)
+		return;
+
 	if (GetTickCount64() >= this->_nextTileTime)
 	{
 		iCurrTileX = this->_serverX_curr;
@@ -129,35 +132,8 @@ void CGameServer::CPlayer::Action_Move()
 
 		if ((-1) != iNextTileX)
 		{
-			this->_serverX_prev = iCurrTileX;
-			this->_serverY_prev = iCurrTileY;
-			this->_serverX_curr = iNextTileX;
-			this->_serverY_curr = iNextTileY;
-
-			this->_clientPosX = TILE_to_POS_X(this->_serverX_curr);
-			this->_clientPosY = TILE_to_POS_Y(this->_serverY_curr);
-
-			this->_sectorX_prev = this->_sectorX_curr;
-			this->_sectorY_prev = this->_sectorY_curr;
-			this->_sectorX_curr = TILE_to_SECTOR_X(iNextTileX);
-			this->_sectorY_curr = TILE_to_SECTOR_Y(iNextTileY);
-
+			Move(iNextTileX, iNextTileY);
 			SYSLOG(L"GAME", LOG::LEVEL_DEBUG, L" # Cooldinate / [ServerX : %d][ServerY : %d][ClientX : %f][ClientY : %f]", this->_serverX_curr, this->_serverY_curr, this->_clientPosX, this->_clientPosY);
-
-			if (!this->_pGameServer->_field->MoveTileObject(iCurrTileX, iCurrTileY, iNextTileX, iNextTileY, this->_clientID))
-				CCrashDump::Crash();
-
-			if ((this->_sectorX_prev != this->_sectorX_curr) || (this->_sectorY_prev != this->_sectorY_curr))
-			{
-				if (!this->_pGameServer->_sector->MoveSector(this->_sectorX_prev, this->_sectorY_prev, this->_sectorX_curr, this->_sectorY_curr, this->_clientID, this))
-					CCrashDump::Crash();
-
-				// 섹터가 변경되면 주변 섹터에게 캐릭터 생성 / 캐릭터 삭제 패킷 각각 보내고
-				SendPacket_MoveSector();
-
-				// 만약 이동중이였던 캐릭터가 있다면 캐릭터 이동패킷도 보내야한다.
-
-			}
 		}
 		else
 			CCrashDump::Crash();
@@ -176,9 +152,248 @@ void CGameServer::CPlayer::Action_Move()
 /////////////////////////////////////////////////////////////////////
 void CGameServer::CPlayer::Action_Attack()
 {
+	CField<CLIENT_ID> *pField = this->_pGameServer->_field;
+	CSector *pSector = this->_pGameServer->_sector;
+	BYTE characterType = this->_characterType;
+	CGameServer *pServer = this->_pGameServer;
+	int attackType = this->_attackType;
+	CLIENT_ID clientID = this->_clientID;
+	
+	bool bDie = false;
+	float clientPosX;
+	float clientPosY;
+	float fPushX;
+	float fPushY;
+	int tileX;
+	int	tileY;
+	int damageValue;
+
+	CPacket *pSendPacket = NULL;
+	std::list<CLIENT_ID> *list = NULL;
+	UINT64 currTick = GetTickCount64();
+
 	if (MODE_GAME != this->_iSessionMode)
 		return;
 
+	// 실제 유저 좌표 수집. 이 작업을 할 곳이 마땅히 없는것 같다.
+	if (dfDUMMY_ACCOUNTNO_LIMIT < clientID && dfGUEST_ACCOUNTNO_OVER > clientID)
+		pServer->CollectRealUserSectorPos(this->_sectorX_curr, this->_sectorY_curr);
+
+	if ((-1) == this->_targetID)
+		return;
+
+	if (this->_byDie)
+		return;
+
+	if (currTick < this->_nextAttackTime)
+		return;
+
+	CPlayer *pTargetPlayer = this->_targetPtr;
+	if (NULL == pTargetPlayer)
+		CCrashDump::Crash();
+
+	if (pTargetPlayer->_clientID == this->_targetID)
+	{
+		if (pTargetPlayer->_byDie)
+		{
+			MoveStop(true);
+			this->_targetID = -1;
+			this->_targetPtr = NULL;
+			return;
+		}
+
+		float distance = Distance(this->_serverX_curr, this->_serverY_curr, pTargetPlayer->_serverX_curr, pTargetPlayer->_serverY_curr);
+
+		if (g_Pattern_AttackRange[attackType][characterType] >= distance)
+		{
+			// 정지 패킷.
+			MoveStop(true);
+
+			// 범위 안에 있으므로 공격
+			if (1 == this->_attackType)
+			{
+				// 밀려날 좌표구하고
+				if (3 != this->_characterType)
+				{
+					AttackPushPos(this->_clientPosX, this->_clientPosY, pTargetPlayer->_clientPosX, pTargetPlayer->_clientPosY, &fPushX, &fPushY);
+					tileX = POS_to_TILE_X(fPushX);
+					tileY = POS_to_TILE_Y(fPushY);
+
+					// 밀려날 좌표가 이동할 수 있는 곳인지 검사
+					if (!pField->CheckTileMove(tileX, tileY))
+					{
+						// 데미지 패킷에 밀려날 좌표 0을 보내면 제자리
+						fPushX = 0;
+						fPushY = 0;
+					}
+					else
+					{
+						pTargetPlayer->Move(tileX, tileY);
+					}
+				}
+				else
+				{
+					// 엘프 단일 공격은 안밀려나게 해봄
+					fPushX = 0;
+					fPushY = 0;
+				}
+
+				// 다음 공격 시간
+				this->_nextAttackTime = currTick + g_Pattern_AttackTime[1][characterType];
+				this->_nextTileTime = currTick + dfATTACK_STOP_TIME;
+
+				// 맞은 사람 스턴 시간 더하기
+				pTargetPlayer->_nextAttackTime = currTick + dfDAMAGE_STUN_TIME;
+				pTargetPlayer->_nextTileTime = currTick + dfDAMAGE_STUN_TIME;
+
+				
+
+				// 패킷 보내기 // 공격 액션, 데미지(조건 시 죽음까지)
+				pSendPacket = CPacket::Alloc();
+				MakePacket_Attack(pSendPacket, 1, this->_clientID, pTargetPlayer->_clientID, this->_nextAttackTime, this->_clientPosX, this->_clientPosY);
+				pServer->SendPacket_SectorAround(pSendPacket, this->_sectorX_curr, this->_sectorY_curr, NULL);
+				pSendPacket->Free();
+
+				damageValue = g_Pattern_AttackPower[1][characterType];
+
+				pSendPacket = CPacket::Alloc();
+				MakePacket_Damaged(pSendPacket, this->_targetID, damageValue, fPushX, fPushY);
+				pServer->SendPacket_SectorAround(pSendPacket, pTargetPlayer->_sectorX_curr, pTargetPlayer->_sectorY_curr, NULL);
+				pSendPacket->Free();
+
+				if (0 > (pTargetPlayer->_iHP -= damageValue))
+				{
+					pTargetPlayer->_iHP = 0;
+					pTargetPlayer->_byDie = 1;
+					pField->MoveTileObject(pTargetPlayer->_serverX_curr, pTargetPlayer->_serverY_curr, (-1), (-1), pTargetPlayer->_clientID);
+					bDie = true;
+				}
+
+				if (bDie)
+				{
+					this->_targetID = -1;
+					this->_targetPtr = NULL;
+
+					pSendPacket = CPacket::Alloc();
+					MakePacket_Die(pSendPacket, pTargetPlayer->_clientID);
+					pServer->SendPacket_SectorAround(pSendPacket, pTargetPlayer->_sectorX_curr, pTargetPlayer->_sectorY_curr, NULL);
+					pSendPacket->Free();
+				}
+
+				st_CLIENT_POS *pPos = pServer->_battleAreaPosPool.Alloc();
+				pPos->_PosX = this->_clientPosX;
+				pPos->_PosY = this->_clientPosY;
+
+				pServer->_battleAreaPosList.push_back(pPos);
+			}
+			else
+			{
+				// 다음 공격 시간
+				this->_nextAttackTime = currTick + g_Pattern_AttackTime[2][characterType];
+				this->_nextTileTime = currTick + dfATTACK_STOP_TIME;
+
+				// 패킷 보내기 // 공격 액션, 데미지(조건 시 죽음까지)
+				pSendPacket = CPacket::Alloc();
+				MakePacket_Attack(pSendPacket, 2, this->_clientID, pTargetPlayer->_clientID, this->_nextAttackTime, this->_clientPosX, this->_clientPosY);
+				pServer->SendPacket_SectorAround(pSendPacket, this->_sectorX_curr, this->_sectorY_curr, NULL);
+				pSendPacket->Free();
+
+				clientPosX = this->_clientPosX;
+				clientPosY = this->_clientPosY;
+
+				damageValue = g_Pattern_AttackPower[2][characterType];
+
+				// 범위 공격 체크
+				for (int iCnt = 0; iCnt < dfPATTERN_ATTACK_AREA_MAX; ++iCnt)
+				{
+					if (255 == g_Pattern_AttackArea[this->_characterType][iCnt][0])
+						break;
+
+					tileX = this->_serverX_curr + g_Pattern_AttackArea[this->_characterType][iCnt][0];
+					tileY = this->_serverY_curr + g_Pattern_AttackArea[this->_characterType][iCnt][1];
+
+					if (!pField->GetTileObject(tileX, tileY, list))
+						continue;
+
+					auto iter = list->begin();
+					for (iter; iter != list->end(); ++iter)
+					{
+						pTargetPlayer = &pServer->_pPlayerArray[EXTRACTCLIENTINDEX((*iter))];
+						if (MODE_GAME != pTargetPlayer->_iSessionMode)
+							continue;
+
+						AttackPushPos(clientPosX, clientPosY, pTargetPlayer->_clientPosX, pTargetPlayer->_clientPosY, &fPushX, &fPushY);
+						tileX = POS_to_TILE_X(fPushX);
+						tileY = POS_to_TILE_Y(fPushY);
+
+						if (!pField->CheckTileMove(tileX, tileY))
+						{
+							// 데미지 패킷에 밀려날 좌표 0을 보내면 제자리
+							fPushX = 0;
+							fPushY = 0;
+						}
+						else
+							pTargetPlayer->Move(tileX, tileY);
+
+						// 맞은 사람 스턴 시간 더하기
+						pTargetPlayer->_nextAttackTime = currTick + dfDAMAGE_STUN_TIME;
+						pTargetPlayer->_nextTileTime = currTick + dfDAMAGE_STUN_TIME;
+
+						pSendPacket = CPacket::Alloc();
+						MakePacket_Damaged(pSendPacket, pTargetPlayer->_clientID, damageValue, fPushX, fPushY);
+						pServer->SendPacket_SectorAround(pSendPacket, pTargetPlayer->_sectorX_curr, pTargetPlayer->_sectorY_curr, NULL);
+						pSendPacket->Free();
+
+						if (0 > (pTargetPlayer->_iHP -= damageValue))
+						{
+							pTargetPlayer->_iHP = 0;
+							pTargetPlayer->_byDie = 1;
+							pField->MoveTileObject(pTargetPlayer->_serverX_curr, pTargetPlayer->_serverY_curr, (-1), (-1), pTargetPlayer->_clientID);
+							bDie = true;
+						}
+
+						if (bDie)
+						{
+							if (this->_targetID == pTargetPlayer->_clientID)
+							{
+								this->_targetID = -1;
+								this->_targetPtr = NULL;
+							}
+
+							pSendPacket = CPacket::Alloc();
+							MakePacket_Die(pSendPacket, pTargetPlayer->_clientID);
+							pServer->SendPacket_SectorAround(pSendPacket, pTargetPlayer->_sectorX_curr, pTargetPlayer->_sectorY_curr, NULL);
+							pSendPacket->Free();
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			// 범위 밖에 있으므로 이동. 하지만 상대가 움직이지 않았다면 이 로직은 패스
+			if (this->_goal_X != pTargetPlayer->_serverX_curr || this->_goal_Y != pTargetPlayer->_serverY_curr)
+			{
+				pServer->_jps->FindPath(this->_serverX_curr, this->_serverY_curr, pTargetPlayer->_serverX_curr, pTargetPlayer->_serverY_curr, this->_path, &this->_pathCount);
+
+				pSendPacket = CPacket::Alloc();
+				MakePacket_ResMoveCharacter(pSendPacket, this->_clientID, this->_pathCount, this->_path, this->_clientPosX, this->_clientPosY);
+				pServer->SendPacket_SectorAround(pSendPacket, this->_sectorX_curr, this->_sectorY_curr, NULL);
+				pSendPacket->Free();
+
+				this->_pPath = this->_path;
+				this->_goal_X = pTargetPlayer->_serverX_curr;
+				this->_goal_Y = pTargetPlayer->_serverY_curr;
+			}
+		}
+	}
+	else
+	{
+		// 중간에 타켓이 접속이 끊긴 경우 발생함
+		MoveStop(true);
+		this->_targetID = -1;
+		this->_targetPtr = NULL;
+	}
 
 
 	return;
@@ -244,48 +459,68 @@ bool CGameServer::CPlayer::OnAuth_ClientLeave(bool bToGame)
 
 bool CGameServer::CPlayer::OnGame_ClientJoin(void)
 {
+	int iTileX, iTileY;
+	int iSectorX, iSectorY;
+
 	// 여기서 캐릭터 생성을 한다.
 	if (dfDUMMY_ACCOUNTNO_LIMIT < this->_accountNo)
 	{
 		if (1 == this->_byParty)
 		{
-			this->_serverX_curr = dfCREATE_PLAYER_X_PARTY1;
-			this->_serverY_curr = dfCREATE_PLAYER_Y_PARTY1;
+			iTileX = dfCREATE_PLAYER_X_PARTY1;
+			iTileY = dfCREATE_PLAYER_Y_PARTY1;
 			
 		}
 		else
 		{
-			this->_serverX_curr = dfCREATE_PLAYER_X_PARTY2;
-			this->_serverY_curr = dfCREATE_PLAYER_Y_PARTY2;
+			iTileX = dfCREATE_PLAYER_X_PARTY2;
+			iTileY = dfCREATE_PLAYER_Y_PARTY2;
 		}
 	}
 	else
 	{
-		//this->_serverX_curr = dfCREATE_PLAYER_X_DUMMY;
-		//this->_serverY_curr = dfCREATE_PLAYER_Y_DUMMY;
-		this->_serverX_curr = ((rand() % 4) + 250);
-		this->_serverY_curr = ((rand() % 5) + 25);
+		//iNextTileX = dfCREATE_PLAYER_X_DUMMY;
+		//iNextTileY = dfCREATE_PLAYER_Y_DUMMY;
+		while (true)
+		{
+			iTileX = ((rand() % 4) + 300);
+			iTileY = ((rand() % 5) + 30);
+
+			if (this->_pGameServer->_field->CheckTileMove(iTileX, iTileY))
+				break;
+		}
 	}
 	
-	this->_serverX_prev = this->_serverX_curr;
-	this->_serverY_prev = this->_serverY_curr;
+	this->_serverX_prev = -1;
+	this->_serverY_prev = -1;
+	this->_serverX_curr = iTileX;
+	this->_serverY_curr = iTileY;
 
-	this->_clientPosX = TILE_to_POS_X(this->_serverX_curr);
-	this->_clientPosY = TILE_to_POS_Y(this->_serverY_curr);
+	this->_pGameServer->_field->MoveTileObject((-1), (-1), iTileX, iTileY, this->_clientID);
 
-	this->_sectorX_curr = TILE_to_SECTOR_X(this->_serverX_curr);
-	this->_sectorY_curr = TILE_to_SECTOR_Y(this->_serverY_curr);
-	this->_sectorX_prev = this->_sectorX_curr;
-	this->_sectorY_prev = this->_sectorY_curr;
+	iSectorX = TILE_to_SECTOR_X(iTileX);
+	iSectorY = TILE_to_SECTOR_Y(iTileY);
+
+	this->_sectorX_prev = -1;
+	this->_sectorY_prev = -1;
+	this->_sectorX_curr = iSectorX;
+	this->_sectorY_curr = iSectorY;
+	
+	this->_pGameServer->_sector->MoveSector((-1), (-1), iSectorX, iSectorY, this->_clientID, this);
+
+	this->_clientPosX = TILE_to_POS_X(iTileX);
+	this->_clientPosY = TILE_to_POS_Y(iTileY);
 
 	this->_rotation = (en_DIRECTION)((rand() % eMOVE_MAX) + 1);
 	
 	this->_iHP = dfHP_MAX;
 	this->_pPath = NULL;
 
-	// 여기서 내 주변 섹터 유저에게도 날려줘야 한다.
-	this->_pGameServer->_sector->MoveSector((-1), (-1), this->_sectorX_curr, this->_sectorY_curr, this->_clientID, this);
-	this->_pGameServer->_field->MoveTileObject((-1), (-1), this->_serverX_curr, this->_serverY_curr, this->_clientID);
+	this->_byDie = 0;
+
+	this->_targetID = -1;
+	this->_targetPtr = NULL;
+	this->_byFirstAction = 0;
 
 	SendPacket_NewCreateCharacter();
 
@@ -361,7 +596,8 @@ bool CGameServer::CPlayer::OnGame_PacketProc(void)
 bool CGameServer::CPlayer::OnGame_ClientLeave(void)
 {
 	// 타일에서 제거
-	this->_pGameServer->_field->MoveTileObject(this->_serverX_curr, this->_serverY_curr, (-1), (-1), this->_clientID);
+	if (0 ==this->_byDie)
+		this->_pGameServer->_field->MoveTileObject(this->_serverX_curr, this->_serverY_curr, (-1), (-1), this->_clientID);
 
 	// 섹터에서 제거
 	this->_pGameServer->_sector->MoveSector(this->_sectorX_curr, this->_sectorY_curr, (-1), (-1), this->_clientID, this);
@@ -426,13 +662,68 @@ bool CGameServer::CPlayer::CheckErrorRange(float PosX, float PosY)
 
 void CGameServer::CPlayer::MoveStop(bool bSend)
 {
+//	int iNextTileX, iNextTileY;
+
 	this->_pPath = NULL;
 	this->_pathCount = 0;
-	this->_bMove = false;
 	this->_path_curr = 0;
+
+	//// 클라가 한 칸 더 앞에 가있음. 방향으로 한칸 전진
+	//MoveTile(this->_rotation, this->_serverX_curr, this->_serverY_curr, &iNextTileX, &iNextTileY);
+	//if ((-1) != iNextTileX)
+	//	Move(iNextTileX, iNextTileY);
 
 	if (bSend)
 		SendPacket_MoveStop();
+	return;
+}
+
+
+/////////////////////////////////////////////////////////////////////
+//
+//	함수 : Move(int tileX, int tileY)
+//	인자
+//		int tileX	: 이동할 타일 X좌표
+//		int tileY	: 이동할 타일 Y좌표
+//
+//	이동처리를 담당한다. 좌표 세팅을 하고 타일 오브젝트 옮기기, 
+//	섹터 옮기기, 섹터를 옮겼다면 패킷 전송까지 같이 해준다
+/////////////////////////////////////////////////////////////////////
+void CGameServer::CPlayer::Move(int tileX, int tileY)
+{
+	if ((this->_serverX_prev != tileX) || (this->_serverY_prev != tileY))
+	{
+		this->_serverX_prev = this->_serverX_curr;
+		this->_serverY_prev = this->_serverY_curr;
+		this->_serverX_curr = tileX;
+		this->_serverY_curr = tileY;
+
+		this->_pGameServer->_field->MoveTileObject(this->_serverX_prev, this->_serverY_prev, tileX, tileY, this->_clientID);
+
+		this->_sectorX_prev = this->_sectorX_curr;
+		this->_sectorY_prev = this->_sectorY_curr;
+		this->_sectorX_curr = TILE_to_SECTOR_X(tileX);
+		this->_sectorY_curr = TILE_to_SECTOR_Y(tileY);
+
+		this->_clientPosX = TILE_to_POS_X(tileX);
+		this->_clientPosY = TILE_to_POS_Y(tileY);
+
+		if ((this->_sectorX_prev != this->_sectorX_curr) || (this->_sectorY_prev != this->_sectorY_curr))
+		{
+			this->_pGameServer->_sector->MoveSector(this->_sectorX_prev, this->_sectorY_prev, this->_sectorX_curr, this->_sectorY_curr, this->_clientID, this);
+			SendPacket_MoveSector();
+		}
+	}
+
+	return;
+}
+
+
+void CGameServer::CPlayer::GetSectorPos(int *iSectorX, int *iSectorY)
+{
+	*iSectorX = this->_sectorX_curr;
+	*iSectorY = this->_sectorY_curr;
+
 	return;
 }
 
@@ -542,43 +833,46 @@ void CGameServer::CPlayer::PacketProc_CharacterSelect(CPacket *pRecvPacket)
 #pragma region packetproc_game
 void CGameServer::CPlayer::PacketProc_MoveCharacter(CPacket *pRecvPacket)
 {
+	//
+	//	처음 접속시 이 패킷을 보내면 서버는 이동처리는 하는데 클라가 이동처리를 못한다.
+	//	결국 싱크 패킷을 보내게 되는데 어찌된 영문인가?
+	//
+	
 	__int64 clientID;
 	float startX;
 	float startY;
 	float destX;
 	float destY;
+	int startTileX;
+	int startTileY;
+	int destTileX;
+	int destTileY;
+
+	if (1 == this->_byDie)
+		return;
 
 	*pRecvPacket >> clientID >> startX >> startY >> destX >> destY;
 
-	if (this->CheckErrorRange(startX, startY))
-	{
-		SendPacket_Sync();
-	}
-	else
-	{
-		this->_clientPosX = startX;
-		this->_clientPosY = startY;
-		this->_serverX_prev = this->_serverX_curr;
-		this->_serverY_prev = this->_serverY_curr;
-		this->_serverX_curr = POS_to_TILE_X(startX);
-		this->_serverY_curr = POS_to_TILE_Y(startY);
+	startTileX = POS_to_TILE_X(startX);
+	startTileY = POS_to_TILE_Y(startY);
+	destTileX = POS_to_TILE_X(destX);
+	destTileY = POS_to_TILE_Y(destY);
 
-		if ((this->_serverX_prev != this->_serverX_curr) || (this->_serverY_prev != this->_serverY_curr))
-			this->_pGameServer->_field->MoveTileObject(this->_serverX_prev, this->_serverY_prev, this->_serverX_curr, this->_serverY_curr, this->_clientID);
-	}
+	if (this->CheckErrorRange(startX, startY))
+		SendPacket_Sync();
+	else
+		Move(startTileX, startTileY);
 
 	CPacket *pSendPacket = CPacket::Alloc();
-	if (this->_pGameServer->_jps->FindPath(this->_serverX_curr, this->_serverY_curr, POS_to_TILE_X(destX), POS_to_TILE_Y(destY), this->_path, &this->_pathCount))
+	if (this->_pGameServer->_jps->FindPath(this->_serverX_curr, this->_serverY_curr, destTileX, destTileY, this->_path, &this->_pathCount))
 	{
-		MakePacket_ResMoveCharacter(pSendPacket, clientID, (BYTE)this->_pathCount, this->_path);
+		MakePacket_ResMoveCharacter(pSendPacket, clientID, (BYTE)this->_pathCount, this->_path, this->_clientPosX, this->_clientPosY);
 		this->_pPath = this->_path;
-		this->_bMove = true;
-		//this->_rotation = MoveDirection(this->_serverX_curr, this->_serverY_curr, POS_to_TILE_X(this->_pPath->X), POS_to_TILE_Y(this->_pPath->Y));
 		this->_nextTileTime = GetTickCount64();
 		this->_path_curr = 0;
 
-		this->_goal_X = POS_to_TILE_X(destX);
-		this->_goal_Y = POS_to_TILE_Y(destY);
+		this->_goal_X = destTileX;
+		this->_goal_Y = destTileY;
 	}
 	else
 	{
@@ -587,14 +881,16 @@ void CGameServer::CPlayer::PacketProc_MoveCharacter(CPacket *pRecvPacket)
 		MoveStop(false);
 	}
 
-	//SendPacket(pSendPacket);
-	// 유저를 포함한 주변 3X3 섹터에게 보내야한다.
 	this->_pGameServer->SendPacket_SectorAround(pSendPacket, this->_sectorX_curr, this->_sectorY_curr, NULL);
 	pSendPacket->Free();
 
 	// 이동, 정지 패킷이 오면 공격 중단
 	this->_targetID = -1;
 	this->_targetPtr = NULL;
+
+	if (0 == this->_byFirstAction)
+		this->_byFirstAction = 1;
+
 	return;
 }
 
@@ -605,6 +901,8 @@ void CGameServer::CPlayer::PacketProc_StopCharacter(CPacket *pRecvPacket)
 	float PosY;
 	WORD rotation;
 
+	int iTileX, iTileY;
+
 	*pRecvPacket >> clientID >> PosX >> PosY >> rotation;
 
 	if (this->CheckErrorRange(PosX, PosY))
@@ -613,21 +911,17 @@ void CGameServer::CPlayer::PacketProc_StopCharacter(CPacket *pRecvPacket)
 	}
 	else
 	{
-		this->_clientPosX = PosX;
-		this->_clientPosY = PosY;
-		this->_serverX_prev = this->_serverX_curr;
-		this->_serverY_prev = this->_serverY_curr;
-		this->_serverX_curr = POS_to_TILE_X(PosX);
-		this->_serverY_curr = POS_to_TILE_Y(PosY);
+		iTileX = POS_to_TILE_X(PosX);
+		iTileY = POS_to_TILE_Y(PosY);
 
-		this->_pGameServer->_field->MoveTileObject(_serverX_prev, _serverY_prev, _serverX_curr, _serverY_curr, this->_clientID);
+		Move(iTileX, iTileY);
 	}
 
 	MoveStop(false);
 
 	// 이동, 정지 패킷이 오면 공격 중단
-	this->_targetID = -1;
-	this->_targetPtr = NULL;
+	/*this->_targetID = -1;
+	this->_targetPtr = NULL;*/
 	return;
 }
 
@@ -659,22 +953,20 @@ void CGameServer::CPlayer::PacketProc_Attack1(CPacket *pRecvPacket)
 		return;
 	}
 
+	UINT64 tick = GetTickCount64();
 	// pAttackPlayer는 this랑 무조건 같을 수 밖에 없지 않나?
-	if (this->_byParty != pTargetPlayer->_byParty)
+	if ((this->_byParty != pTargetPlayer->_byParty) || (3 == this->_characterType))
 	{
 		this->_targetID = TargetID;
 		this->_targetPtr = pTargetPlayer;
+		this->_attackType = 1;
+
+		if (tick >= this->_nextAttackTime)
+			this->_nextAttackTime = tick;
 	}
-	else
-	{
-		// 엘프가 엘프 공격할 수 있나요??
-		if ((3 != this->_characterType) && (3 == pTargetPlayer->_characterType))
-		{
-			this->_targetID = TargetID;
-			this->_targetPtr = pTargetPlayer;
-			this->_iAttackType = 1;
-		}
-	}
+
+	if (0 == this->_byFirstAction)
+		this->_byFirstAction = 1;
 
 	return;
 }
@@ -707,22 +999,20 @@ void CGameServer::CPlayer::PacketProc_Attack2(CPacket *pRecvPacket)
 		return;
 	}
 
+	UINT64 tick = GetTickCount64();
 	// pAttackPlayer는 this랑 무조건 같을 수 밖에 없지 않나?
-	if (this->_byParty != pTargetPlayer->_byParty)
+	if ((this->_byParty != pTargetPlayer->_byParty) || (3 == this->_characterType))
 	{
 		this->_targetID = TargetID;
 		this->_targetPtr = pTargetPlayer;
+		this->_attackType = 2;
+
+		if (tick >= this->_nextAttackTime)
+			this->_nextAttackTime = tick;
 	}
-	else
-	{
-		// 엘프가 엘프 공격할 수 있나요??
-		if ((3 != this->_characterType) && (3 == pTargetPlayer->_characterType))
-		{
-			this->_targetID = TargetID;
-			this->_targetPtr = pTargetPlayer;
-			this->_iAttackType = 2;
-		}
-	}
+
+	if (0 == this->_byFirstAction)
+		this->_byFirstAction = 1;
 
 	return;
 }
@@ -793,7 +1083,7 @@ void CGameServer::CPlayer::MakePacket_CreateCharacter(CPacket *pSendPacket, __in
 	return;
 }
 
-void CGameServer::CPlayer::MakePacket_CreateOtherCharacter(CPacket *pSendPacket, __int64 clientID, BYTE characterType, wchar_t *szNickname, float PosX, float PosY, WORD rotation, BYTE respawn, BYTE die, int hp, BYTE party)
+void CGameServer::CPlayer::MakePacket_CreateOtherCharacter(CPacket *pSendPacket, __int64 clientID, BYTE characterType, wchar_t *szNickname, float PosX, float PosY, WORD rotation, BYTE respawn, BYTE die, int hp, BYTE party, BYTE firstAction)
 {
 	*pSendPacket << (WORD)en_PACKET_CS_GAME_RES_CREATE_OTHER_CHARACTER;
 	*pSendPacket << clientID;
@@ -808,6 +1098,7 @@ void CGameServer::CPlayer::MakePacket_CreateOtherCharacter(CPacket *pSendPacket,
 	*pSendPacket << die;
 	*pSendPacket << hp;
 	*pSendPacket << party;
+	*pSendPacket << firstAction;
 
 	return;
 }
@@ -820,12 +1111,14 @@ void CGameServer::CPlayer::MakePacket_RemoveObject(CPacket *pSendPacket, CLIENT_
 	return;
 }
 
-void CGameServer::CPlayer::MakePacket_ResMoveCharacter(CPacket *pSendPacket, __int64 clientID, BYTE pathCount, PATH *pPath)
+void CGameServer::CPlayer::MakePacket_ResMoveCharacter(CPacket *pSendPacket, __int64 clientID, BYTE pathCount, PATH *pPath, float posX, float posY)
 {
 	*pSendPacket << (WORD)en_PACKET_CS_GAME_RES_MOVE_CHARACTER;
 	*pSendPacket << clientID;
 	*pSendPacket << pathCount;
 	pSendPacket->Enqueue((char *)pPath, sizeof(PATH) * pathCount);
+	*pSendPacket << posX;
+	*pSendPacket << posY;
 
 	return;
 }
@@ -837,6 +1130,39 @@ void CGameServer::CPlayer::MakePacket_StopCharacter(CPacket *pSendPacket, __int6
 	*pSendPacket << PosX;
 	*pSendPacket << PosY;
 	*pSendPacket << dir;
+
+	return;
+}
+
+void CGameServer::CPlayer::MakePacket_Attack(CPacket *pSendPacket, BYTE attackType, CLIENT_ID attackerID, CLIENT_ID targetID, UINT64 coolTime, float attackPosX, float attackPosY)
+{
+	*pSendPacket << (WORD)en_PACKET_CS_GAME_RES_ATTACK;
+	*pSendPacket << attackType;
+	*pSendPacket << attackerID;
+	*pSendPacket << targetID;
+	*pSendPacket << coolTime;
+
+	*pSendPacket << attackPosX;
+	*pSendPacket << attackPosY;
+
+	return;
+}
+
+void CGameServer::CPlayer::MakePacket_Damaged(CPacket *pSendPacket, CLIENT_ID damagedID, int value, float PushX, float PushY)
+{
+	*pSendPacket << (WORD)en_PACKET_CS_GAME_RES_DAMAGE;
+	*pSendPacket << damagedID;
+	*pSendPacket << value;
+	*pSendPacket << PushX;
+	*pSendPacket << PushY;
+
+	return;
+}
+
+void CGameServer::CPlayer::MakePacket_Die(CPacket *pSendPacket, CLIENT_ID deadClientID)
+{
+	*pSendPacket << (WORD)en_PACKET_CS_GAME_RES_PLAYER_DIE;
+	*pSendPacket << deadClientID;
 
 	return;
 }
@@ -880,7 +1206,7 @@ void CGameServer::CPlayer::SendPacket_NewCreateCharacter(void)
 	int iSectorY = this->_sectorY_curr;
 
 	pSendPacket = CPacket::Alloc();
-	MakePacket_CreateOtherCharacter(pSendPacket, this->_clientID, this->_characterType, this->_szNickname, this->_clientPosX, this->_clientPosY, this->_rotation, 1, this->_byDie, this->_iHP, this->_byParty);
+	MakePacket_CreateOtherCharacter(pSendPacket, this->_clientID, this->_characterType, this->_szNickname, this->_clientPosX, this->_clientPosY, this->_rotation, 1, this->_byDie, this->_iHP, this->_byParty, this->_byFirstAction);
 	this->_pGameServer->SendPacket_SectorAround(pSendPacket, iSectorX, iSectorY, this);
 	pSendPacket->Free();
 
@@ -904,14 +1230,14 @@ void CGameServer::CPlayer::SendPacket_NewCreateCharacter(void)
 				continue;
 
 			pSendPacket = CPacket::Alloc();
-			MakePacket_CreateOtherCharacter(pSendPacket, pPlayer->_clientID, pPlayer->_characterType, pPlayer->_szNickname, pPlayer->_clientPosX, pPlayer->_clientPosY, pPlayer->_rotation, 0, pPlayer->_byDie, pPlayer->_iHP, pPlayer->_byParty);
+			MakePacket_CreateOtherCharacter(pSendPacket, pPlayer->_clientID, pPlayer->_characterType, pPlayer->_szNickname, pPlayer->_clientPosX, pPlayer->_clientPosY, pPlayer->_rotation, 0, pPlayer->_byDie, pPlayer->_iHP, pPlayer->_byParty, pPlayer->_byFirstAction);
 			SendPacket(pSendPacket);
 			pSendPacket->Free();
 
 			if (NULL != pPlayer->_pPath)
 			{
 				pSendPacket = CPacket::Alloc();
-				MakePacket_ResMoveCharacter(pSendPacket, pPlayer->_clientID, (pPlayer->_pathCount - pPlayer->_path_curr), pPlayer->_pPath);
+				MakePacket_ResMoveCharacter(pSendPacket, pPlayer->_clientID, (pPlayer->_pathCount - pPlayer->_path_curr), pPlayer->_pPath, pPlayer->_clientPosX, pPlayer->_clientPosY);
 				SendPacket(pSendPacket);
 				pSendPacket->Free();
 			}
@@ -942,14 +1268,14 @@ void CGameServer::CPlayer::SendPacket_MoveSector(void)
 	this->_pGameServer->_sector->GetAroundSector(this->_sectorX_curr, this->_sectorY_curr, &addSector);
 	this->_pGameServer->_sector->GetUpdateSector(&removeSector, &addSector);
 
-	// 1. removeSector - 해당 유저 캐릭터 오브젝트 삭제 패킷 생성
+	// 1. removeSector - 해당 유저 캐릭터 오브젝트 삭제 패킷 생성. 주변에 전달
 	pSendPacket = CPacket::Alloc();
 	MakePacket_RemoveObject(pSendPacket, this->_clientID);
 	for (iCnt = 0; iCnt < removeSector._iCount; ++iCnt)
 		this->_pGameServer->SendPacket_SectorOne(pSendPacket, removeSector._around[iCnt]._iSectorX, removeSector._around[iCnt]._iSectorY, NULL);
 	pSendPacket->Free();
 
-	// 2. removeSector - 제거 섹터의 유저 캐릭터 오브젝트 삭제 패킷 생성
+	// 2. removeSector - 제거 섹터의 유저 캐릭터 오브젝트 삭제 패킷 생성. 나에게 전달
 	for (iCnt = 0; iCnt < removeSector._iCount; ++iCnt)
 	{
 		map = this->_pGameServer->_sector->GetList(removeSector._around[iCnt]._iSectorX, removeSector._around[iCnt]._iSectorY);
@@ -971,24 +1297,24 @@ void CGameServer::CPlayer::SendPacket_MoveSector(void)
 		}
 	}
 
-	// 3. addSector - 해당 유저 캐릭터 오브젝트 생성 패킷 생성
+	// 3. addSector - 해당 유저 캐릭터 오브젝트 생성 패킷 생성. 주변에 전달
 	pSendPacket = CPacket::Alloc();
-	MakePacket_CreateOtherCharacter(pSendPacket, this->_clientID, this->_characterType, this->_szNickname, this->_clientPosX, this->_clientPosY, this->_rotation, 0, this->_byDie, this->_iHP, this->_byParty);
+	MakePacket_CreateOtherCharacter(pSendPacket, this->_clientID, this->_characterType, this->_szNickname, this->_clientPosX, this->_clientPosY, this->_rotation, 0, this->_byDie, this->_iHP, this->_byParty, this->_byFirstAction);
 	for (iCnt = 0; iCnt < addSector._iCount; ++iCnt)
 		this->_pGameServer->SendPacket_SectorOne(pSendPacket, addSector._around[iCnt]._iSectorX, addSector._around[iCnt]._iSectorY, NULL);
 	pSendPacket->Free();
 
-	// 4. addSector - 해당 유저가 이동 중이였다면 캐릭터 이동 패킷 생성
+	// 4. addSector - 해당 유저가 이동 중이였다면 캐릭터 이동 패킷 생성. 주변에 전달
 	if (NULL != this->_pPath)
 	{
 		pSendPacket = CPacket::Alloc();
-		MakePacket_ResMoveCharacter(pSendPacket, this->_clientID, (this->_pathCount - this->_path_curr), this->_pPath);
+		MakePacket_ResMoveCharacter(pSendPacket, this->_clientID, (this->_pathCount - this->_path_curr), this->_pPath, this->_clientPosX, this->_clientPosY);
 		for (iCnt = 0; iCnt < addSector._iCount; ++iCnt)
 			this->_pGameServer->SendPacket_SectorOne(pSendPacket, addSector._around[iCnt]._iSectorX, addSector._around[iCnt]._iSectorY, NULL);
 		pSendPacket->Free();
 	}
 	
-	// 5. addSector - 신규 섹터의 캐릭터 정보를 해당 유저에게 줄 패킷 생성
+	// 5. addSector - 신규 섹터의 캐릭터 정보를 해당 유저에게 줄 패킷 생성. 나에게 전달
 	for (iCnt = 0; iCnt < addSector._iCount; ++iCnt)
 	{
 		map = this->_pGameServer->_sector->GetList(addSector._around[iCnt]._iSectorX, addSector._around[iCnt]._iSectorY);
@@ -1004,15 +1330,15 @@ void CGameServer::CPlayer::SendPacket_MoveSector(void)
 				continue;
 
 			pSendPacket = CPacket::Alloc();
-			MakePacket_CreateOtherCharacter(pSendPacket, pPlayer->_clientID, pPlayer->_characterType, pPlayer->_szNickname, pPlayer->_clientPosX, pPlayer->_clientPosY, pPlayer->_rotation, 0, pPlayer->_byDie, pPlayer->_iHP, pPlayer->_byParty);
+			MakePacket_CreateOtherCharacter(pSendPacket, pPlayer->_clientID, pPlayer->_characterType, pPlayer->_szNickname, pPlayer->_clientPosX, pPlayer->_clientPosY, pPlayer->_rotation, 0, pPlayer->_byDie, pPlayer->_iHP, pPlayer->_byParty, pPlayer->_byFirstAction);
 			SendPacket(pSendPacket);
 			pSendPacket->Free();
 
-			// 6. addSector - 신규 섹터의 캐릭터가 이동중이라면 이동 패킷 생성
+			// 6. addSector - 신규 섹터의 캐릭터가 이동중이라면 이동 패킷 생성. 나에게 전달
 			if (NULL != pPlayer->_pPath)
 			{
 				pSendPacket = CPacket::Alloc();
-				MakePacket_ResMoveCharacter(pSendPacket, pPlayer->_clientID, (pPlayer->_pathCount - pPlayer->_path_curr), pPlayer->_pPath);
+				MakePacket_ResMoveCharacter(pSendPacket, pPlayer->_clientID, (pPlayer->_pathCount - pPlayer->_path_curr), pPlayer->_pPath, pPlayer->_clientPosX, pPlayer->_clientPosY);
 				SendPacket(pSendPacket);
 				pSendPacket->Free();
 			}

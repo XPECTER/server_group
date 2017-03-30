@@ -20,7 +20,7 @@
 do{															\
 	if (LOG::iLogLevel <= LogLevel)							\
 		{													\
-		wsprintf(g_szLogBuff, fmt, ##__VA_ARGS__);			\
+		swprintf_s(g_szLogBuff, 1024, fmt, ##__VA_ARGS__);	\
 		LOG::printLog(Category, LogLevel, g_szLogBuff);		\
 		}													\
 } while (0)										

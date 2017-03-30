@@ -145,6 +145,14 @@ public:
 		return true;
 	}
 
+	bool CheckTileMove(int PosX, int PosY)
+	{
+		if (en_TILE_NORMAL == this->_tileMap[PosY][PosX]._property)
+			return true;
+		else
+			return false;
+	}
+
 private:
 	bool AddTileObject(int PosX, int PosY, T content)
 	{

@@ -577,3 +577,20 @@ bool CMMOServer::GameThread_update(void)
 	this->_iGameThLoopCounter++;
 	return true;
 }
+
+void CMMOServer::SendPacket_BraodCast(CPacket *pSendPacket)
+{
+	CSession *pSession = NULL;
+
+	for (int i = 0; i < _iClientMax; ++i)
+	{
+		pSession = (this->_pSessionArray[i]);
+
+		if (CSession::MODE_GAME == pSession->_iSessionMode)
+		{
+			pSession->SendPacket(pSendPacket);
+		}
+	}
+	
+	return;
+}

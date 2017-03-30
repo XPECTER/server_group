@@ -204,12 +204,6 @@ bool CLoginServer::PacketProc_ReqLogin(CLIENT_ID clientID, CPacket *pPacket)
 	pPacket->Dequeue(input.SessionKey, 64);
 
 	// 내가 Select한 SessionKey와 유저가 가져온 SessionKey가 다르면 컷
-	//if (accountNo > dfDUMMY_ACCOUNTNO_MAX && SessionKey != DB에서 찾은 세션 키)
-	//{
-	//	SendPacket_LoginFailed()
-	//	return false;
-	//}
-
 	stDB_ACCOUNT_READ_LOGIN_SESSION_out output;
 	g_AccountDB.ReadDB(enDB_ACCOUNT_READ_LOGIN_SESSION, &input, &output);
 
@@ -238,7 +232,8 @@ bool CLoginServer::PacketProc_ReqLogin(CLIENT_ID clientID, CPacket *pPacket)
 		{
 			pPlayer->_timeoutTick = GetTickCount64();
 			pPlayer->_accountNo = input.AccountNo;
-			//pPlayer->_sessionKey = input.SessionKey; // 얘 지역이라 없어지는데..? 
+			wsprintf(pPlayer->_szID, L"%s", output.szID);
+			wsprintf(pPlayer->_szNick, L"%s", output.szNick);
 			memcpy_s(pPlayer->_sessionKey, 64, input.SessionKey, 64);
 
 			CPacket *pSendPacket = CPacket::Alloc();
@@ -247,7 +242,6 @@ bool CLoginServer::PacketProc_ReqLogin(CLIENT_ID clientID, CPacket *pPacket)
 			this->_lanserver_Login->SendPacket_ServerGroup(1, pSendPacket);
 			pSendPacket->Free();
 
-			/*InterlockedExchange(&pPlayer->_bSendFlag, TRUE);*/
 			pPlayer->_bRecvFlag = TRUE;
 			return true;
 		}
@@ -310,10 +304,11 @@ bool CLoginServer::ResponseCheck(__int64 accountNo, int serverType)
 void CLoginServer::SendPacket_ResponseLogin(st_PLAYER *pPlayer, BYTE byState)
 {
 	CPacket *pPacket = CPacket::Alloc();
-	MakePacket_ResLogin(pPacket, pPlayer->_accountNo, L"", L"", byState);
-
+	MakePacket_ResLogin(pPacket, pPlayer->_accountNo, pPlayer->_szID, pPlayer->_szNick, byState);
 	SendPacket(pPlayer->_clientID, pPacket);
 	pPacket->Free();
+
+	pPlayer->_pLastPacket = pPacket;
 }
 
 
@@ -348,9 +343,9 @@ void CLoginServer::MakePacket_ResLogin(CPacket *pSendPacket, __int64 iAccountNo,
 	// 여기에 DB가 들어가야함.
 	// ID넣고
 	// Nickname 넣고
-	wchar_t id[20] = { 0, };
-	pSendPacket->Enqueue((char *)id, dfID_LEN * 2); // ID
-	pSendPacket->Enqueue((char *)id, dfNICK_LEN * 2); // NICK
+	//wchar_t id[20] = { 0, };
+	pSendPacket->Enqueue((char *)szID, dfID_LEN * 2); // ID
+	pSendPacket->Enqueue((char *)szNickname, dfNICK_LEN * 2); // NICK
 
 	st_SERVER_LINK_INFO *pInfo = &g_ConfigData._serverLinkInfo[0];
 

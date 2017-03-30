@@ -11,20 +11,27 @@ enum en_DB_ACTION_TYPE
 	enDB_ACCOUNT_READ_LOGIN_SESSION	= 0,			// accountdb 에서 로그인 세션키 및 정보 확인 (로그인서버에서 사용)
 	enDB_ACCOUNT_READ_USER,							// accountdb 에서 회원 정보 얻기 & status login 상태로
 
-	enDB_ACCOUNT_READ_STATUS_INIT,					// 게임서버가 켜질 때 모든 유저의 status를 로그아웃 상태로 변경
-	enDB_ACCOUNT_WRITE_STATUS_LOGOUT				// 플레이어 로그아웃시 status 를 로그아웃 상태로 변경
+	enDB_GAME_READ_PLAYER_CHECK,					// gamedb 에서 플레이어 정보가 있는지 확인, 없다면 생성. 
+													// 얻을 내용은 없음. 
 
+	enDB_GAME_WRITE_LOG_JOIN,						// 캐릭터 선택 후 게임진입시
+													// gameDB 에 저장할 내용은 없으나 로그를 남기기 위함
+
+	enDB_GAME_WRITE_LOG_LEAVE,						// 게임모드에서 게임서버를 나갈 때 저장.
+													// gameDB 에 저장할 내용은 없으나 로그를 남기기 위함
+
+	enDB_GAME_WRITE_PLAYER_DIE,					// 플레이어 돌아가심 / die 카운트 + 1
+	enDB_GAME_WRITE_PLAYER_KILL,					// 플레이어 적군 킬 / kill 카운트 + 1
+													// 대상이 게스트 계정이라면 게스트 킬로 저장
+													// 대상이나 자신이 더미라면 일단 저장으로 진행 후
+													// DB 부하가 너무 심하다면 빼서 비교 해 봄.
+
+	enDB_ACCOUNT_WRITE_STATUS_LOGOUT,				// 플레이어 로그아웃시 status 를 로그아웃 상태로 변경
+	enDB_ACCOUNT_READ_STATUS_INIT,
 };
 
 
-//--------------------------------------------------------
-// 각 타입별 사용 구조체.
-//
-// 경우에 따라서 구조체가 없기도 함.  
-// 그런경우는 주석으로 내용을 적어두도록 한다.
-//
-// enum 과 똑같은 이름으로 만들며 앞 st 로 구분하며, 뒤에 in, out 을 붙인다.
-//--------------------------------------------------------
+
 
 
 // enDB_ACCOUNT_READ_LOGIN_SESSION ----------------------------------------------------------
@@ -49,7 +56,9 @@ struct stDB_ACCOUNT_READ_LOGIN_SESSION_out
 
 struct stDB_ACCOUNT_READ_USER_in
 {
-	__int64		AccountNo;
+	__int64				AccountNo;
+
+	//CLIENT_CONNECT_INFO		ConnectInfo;
 };
 
 
@@ -62,10 +71,70 @@ struct stDB_ACCOUNT_READ_USER_out
 };
 
 
-// enDB_ACCOUNT_READ_STATUS_INIT ----------------------------------------------------------
-struct stenDB_ACCOUNT_READ_STATUS_INIT
-{
 
+
+
+
+// enDB_GAME_READ_PLAYER_CHECK ----------------------------------------------------------
+
+struct stDB_GAME_READ_PLAYER_CHECK_in
+{
+	__int64					AccountNo;
+	//CLIENT_CONNECT_INFO		ConnectInfo;
+};
+
+
+
+// enDB_GAME_WRITE_LOG_JOIN --------------------------------------------------------------
+
+struct stDB_GAME_WRITE_LOG_JOIN_in
+{
+	__int64		AccountNo;
+
+	int			TileX;
+	int			TileY;
+
+	BYTE		CharacterType;
+};
+
+// enDB_GAME_WRITE_LOG_LEAVE --------------------------------------------------------------
+
+struct stDB_GAME_WRITE_LOG_LEAVE_in
+{
+	__int64		AccountNo;
+
+	int			TileX;
+	int			TileY;
+
+	int			KillCount;
+	int			GuestKillCount;
+};
+
+
+// enDB_GAME_WRITE_PLAYER_DIE ----------------------------------------------------------
+
+struct stDB_GAME_WRITE_PLAYER_DIE_in
+{
+	__int64		AccountNo;
+
+	__int64		AttackerAccountNo;		// gameDB 에 저장하진 않으나 Log 에 남기기 위함
+
+	int			DiePosX;				// gameDB 에는 필요가 없으나 Log 에 죽은위치 표시를 위함.
+	int			DiePosY;		
+};
+
+
+
+// enDB_GAME_WRITE_PLAYER_KILL ----------------------------------------------------------
+
+struct stDB_GAME_WRITE_PLAYER_KILL_in
+{
+	__int64		AccountNo;
+
+	__int64		TargetAccountNo;		// gameDB 에 저장하진 않으나 Log 에 남기기 위함
+
+	int			KillPosX;				// gameDB 에는 필요가 없으나 Log 에 죽은위치 표시를 위함.
+	int			KillPosY;		
 };
 
 
@@ -76,16 +145,10 @@ struct stDB_ACCOUNT_WRITE_STATUS_LOGOUT_in
 	__int64		AccountNo;
 };
 
-//--------------------------------------------------------
-// DB 구분 enum값
-//
-//--------------------------------------------------------
-enum en_DB_TYPE
-{
-	en_DB_TYPE_ACCOUNT = 1,
-	en_DB_TYPE_GAME = 2,
-	en_DB_TYPE_LOG = 3,
-};
+
+
+
+
 
 
 //--------------------------------------------------------

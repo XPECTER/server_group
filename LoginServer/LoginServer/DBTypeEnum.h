@@ -40,8 +40,8 @@ struct stDB_ACCOUNT_READ_LOGIN_SESSION_in
 
 struct stDB_ACCOUNT_READ_LOGIN_SESSION_out
 {
-	WCHAR		szID[20];
-	WCHAR		szNick[20];
+	WCHAR		szID[21];
+	WCHAR		szNick[21];
 	int			Status;
 };
 

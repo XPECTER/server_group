@@ -514,7 +514,7 @@ void CChatServer::SendPacket_Around(CLIENT_ID TargetClientID, CPacket *pPacket, 
 	for (int iCnt = 0; iCnt < sectorAround.iCount; ++iCnt)
 	{
 		if (bSendMe)
-			SendPacket_SectorOne(sectorAround.Around[iCnt].shSectorX, sectorAround.Around[iCnt].shSectorY, pPacket, NULL);
+			SendPacket_SectorOne(sectorAround.Around[iCnt].shSectorX, sectorAround.Around[iCnt].shSectorY, pPacket, -1);
 		else
 			SendPacket_SectorOne(sectorAround.Around[iCnt].shSectorX, sectorAround.Around[iCnt].shSectorY, pPacket, TargetClientID);
 	}
