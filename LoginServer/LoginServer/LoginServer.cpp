@@ -35,26 +35,24 @@ CLoginServer::~CLoginServer()
 
 bool CLoginServer::Start(void)
 {
-	if (!this->_lanserver_Login->Start(g_ConfigData._szLoginServerLanBindIP, 
-		g_ConfigData._iLoginServerLanBindPort, 
-		g_ConfigData._iLanServerWorkerThreadNum, 
-		g_ConfigData._bLoginServerLanNagleOpt, 
+	if (!this->_lanserver_Login->Start(g_ConfigData._szLoginServerLanBindIP,
+		g_ConfigData._iLoginServerLanBindPort,
+		g_ConfigData._iLanServerWorkerThreadNum,
+		g_ConfigData._bLoginServerLanNagleOpt,
 		g_ConfigData._LoginServerLanClientMax))
 	{
 		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Login_LanServer start failed.");
 		return false;
 	}
-	else
+
+	if (!CNetServer::Start(g_ConfigData._szLoginServerNetBindIP,
+		g_ConfigData._iLoginServerNetBindPort,
+		g_ConfigData._iNetServerWorkerThreadNum,
+		g_ConfigData._bLoginServerNetNagleOpt,
+		g_ConfigData._LoginServerNetClientMax))
 	{
-		if (!CNetServer::Start(g_ConfigData._szLoginServerNetBindIP,
-			g_ConfigData._iLoginServerNetBindPort,
-			g_ConfigData._iNetServerWorkerThreadNum,
-			g_ConfigData._bLoginServerNetNagleOpt,
-			g_ConfigData._LoginServerNetClientMax))
-		{
-			SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Login_NetServer start failed.");
-			return false;
-		}
+		SYSLOG(L"SYSTEM", LOG::LEVEL_ERROR, L"Login_NetServer start failed.");
+		return false;
 	}
 
 	return true;

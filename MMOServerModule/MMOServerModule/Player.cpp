@@ -278,6 +278,32 @@ void CGameServer::CPlayer::Action_Attack()
 					MakePacket_Die(pSendPacket, pTargetPlayer->_clientID);
 					pServer->SendPacket_SectorAround(pSendPacket, pTargetPlayer->_sectorX_curr, pTargetPlayer->_sectorY_curr, NULL);
 					pSendPacket->Free();
+
+					st_DBWRITER_MSG *pMsg = pServer->_databaseMsgPool.Alloc();
+					pMsg->Type_DB = dfDBWRITER_TYPE_GAME;
+					pMsg->Type_Message = enDB_GAME_WRITE_PLAYER_DIE;
+
+					stDB_GAME_WRITE_PLAYER_DIE_in dieMessage;
+					dieMessage.AccountNo = pTargetPlayer->_accountNo;
+					dieMessage.AttackerAccountNo = this->_accountNo;
+					dieMessage.DiePosX = pTargetPlayer->_serverX_curr;
+					dieMessage.DiePosY = pTargetPlayer->_serverY_curr;
+
+					memcpy_s(pMsg->Message, dfDBWRITER_MSG_MAX, &dieMessage, sizeof(stDB_GAME_WRITE_PLAYER_DIE_in));
+					pServer->_databaseMsgQueue.Enqueue(pMsg);
+
+					pMsg = pServer->_databaseMsgPool.Alloc();
+					pMsg->Type_DB = dfDBWRITER_TYPE_GAME;
+					pMsg->Type_Message = enDB_GAME_WRITE_PLAYER_KILL;
+
+					stDB_GAME_WRITE_PLAYER_KILL_in killMessage;
+					killMessage.AccountNo = this->_accountNo;
+					killMessage.TargetAccountNo = pTargetPlayer->_accountNo;
+					killMessage.KillPosX = this->_serverX_curr;
+					killMessage.KillPosY = this->_serverY_curr;
+
+					memcpy_s(pMsg->Message, dfDBWRITER_MSG_MAX, &killMessage, sizeof(stDB_GAME_WRITE_PLAYER_KILL_in));
+					pServer->_databaseMsgQueue.Enqueue(pMsg);
 				}
 
 				st_CLIENT_POS *pPos = pServer->_battleAreaPosPool.Alloc();
@@ -364,6 +390,32 @@ void CGameServer::CPlayer::Action_Attack()
 							MakePacket_Die(pSendPacket, pTargetPlayer->_clientID);
 							pServer->SendPacket_SectorAround(pSendPacket, pTargetPlayer->_sectorX_curr, pTargetPlayer->_sectorY_curr, NULL);
 							pSendPacket->Free();
+
+							st_DBWRITER_MSG *pMsg = pServer->_databaseMsgPool.Alloc();
+							pMsg->Type_DB = dfDBWRITER_TYPE_GAME;
+							pMsg->Type_Message = enDB_GAME_WRITE_PLAYER_DIE;
+
+							stDB_GAME_WRITE_PLAYER_DIE_in dieMessage;
+							dieMessage.AccountNo = pTargetPlayer->_accountNo;
+							dieMessage.AttackerAccountNo = this->_accountNo;
+							dieMessage.DiePosX = pTargetPlayer->_serverX_curr;
+							dieMessage.DiePosY = pTargetPlayer->_serverY_curr;
+
+							memcpy_s(pMsg->Message, dfDBWRITER_MSG_MAX, &dieMessage, sizeof(stDB_GAME_WRITE_PLAYER_DIE_in));
+							pServer->_databaseMsgQueue.Enqueue(pMsg);
+
+							pMsg = pServer->_databaseMsgPool.Alloc();
+							pMsg->Type_DB = dfDBWRITER_TYPE_GAME;
+							pMsg->Type_Message = enDB_GAME_WRITE_PLAYER_KILL;
+
+							stDB_GAME_WRITE_PLAYER_KILL_in killMessage;
+							killMessage.AccountNo = this->_accountNo;
+							killMessage.TargetAccountNo = pTargetPlayer->_accountNo;
+							killMessage.KillPosX = this->_serverX_curr;
+							killMessage.KillPosY = this->_serverY_curr;
+
+							memcpy_s(pMsg->Message, dfDBWRITER_MSG_MAX, &killMessage, sizeof(stDB_GAME_WRITE_PLAYER_KILL_in));
+							pServer->_databaseMsgQueue.Enqueue(pMsg);
 						}
 					}
 				}
@@ -401,6 +453,15 @@ void CGameServer::CPlayer::Action_Attack()
 
 bool CGameServer::CPlayer::OnAuth_ClientJoin(void)
 {
+	st_DBWRITER_MSG *pMsg = this->_pGameServer->_databaseMsgPool.Alloc();
+	pMsg->Type_DB = dfDBWRITER_TYPE_GAME;
+	pMsg->Type_Message = enDB_GAME_READ_PLAYER_CHECK;
+	stDB_GAME_READ_PLAYER_CHECK_in message;
+	message.AccountNo = this->_accountNo;
+	message.ConnectInfo = *this->_connectInfo;
+	memcpy_s(pMsg->Message, dfDBWRITER_MSG_MAX, &message, sizeof(stDB_GAME_READ_PLAYER_CHECK_in));
+	this->_pGameServer->_databaseMsgQueue.Enqueue(pMsg);
+
 	return true;
 }
 
@@ -520,9 +581,24 @@ bool CGameServer::CPlayer::OnGame_ClientJoin(void)
 
 	this->_targetID = -1;
 	this->_targetPtr = NULL;
+
+	this->_killCount = 0;
+	this->_killCount_guest = 0;
+
 	this->_byFirstAction = 0;
 
 	SendPacket_NewCreateCharacter();
+	
+	st_DBWRITER_MSG *pMsg = this->_pGameServer->_databaseMsgPool.Alloc();
+	pMsg->Type_DB = dfDBWRITER_TYPE_GAME;
+	pMsg->Type_Message = enDB_GAME_WRITE_LOG_JOIN;
+	stDB_GAME_WRITE_LOG_JOIN_in message;
+	message.AccountNo = this->_accountNo;
+	message.CharacterType = this->_characterType;
+	message.TileX = this->_serverX_curr;
+	message.TileY = this->_serverY_curr;
+	memcpy_s(pMsg->Message, dfDBWRITER_MSG_MAX, &message, sizeof(stDB_GAME_WRITE_LOG_JOIN_in));
+	this->_pGameServer->_databaseMsgQueue.Enqueue(pMsg);
 
 	return true;
 }
@@ -605,18 +681,32 @@ bool CGameServer::CPlayer::OnGame_ClientLeave(void)
 	// 오브젝트 삭제 패킷 보내기
 	SendPacket_RemoveObject_Disconnect();
 
-#pragma region db_gamestatus_init
-	// DB의 게임상태 초기화
+	/////////////////////////////////////////////////////////////////
+	// DB 로그찍기
 	st_DBWRITER_MSG *pMsg = this->_pGameServer->_databaseMsgPool.Alloc();
+	pMsg->Type_DB = dfDBWRITER_TYPE_GAME;
+	pMsg->Type_Message = enDB_GAME_WRITE_LOG_JOIN;
+
+	stDB_GAME_WRITE_LOG_LEAVE_in leaveMessage;
+	leaveMessage.AccountNo = this->_accountNo;
+	leaveMessage.TileX = this->_serverX_curr;
+	leaveMessage.TileY = this->_serverY_curr;
+	leaveMessage.KillCount = this->_killCount;
+	leaveMessage.GuestKillCount = this->_killCount_guest;
+
+	memcpy_s(pMsg->Message, dfDBWRITER_MSG_MAX, &leaveMessage, sizeof(stDB_GAME_WRITE_LOG_JOIN_in));
+	this->_pGameServer->_databaseMsgQueue.Enqueue(pMsg);
+
+	/////////////////////////////////////////////////////////////////
+	// DB의 게임상태 초기화
+	pMsg = this->_pGameServer->_databaseMsgPool.Alloc();
 	pMsg->Type_DB = dfDBWRITER_TYPE_ACCOUNT;
 	pMsg->Type_Message = enDB_ACCOUNT_WRITE_STATUS_LOGOUT;
 
-	stDB_ACCOUNT_WRITE_STATUS_LOGOUT_in data;
-	data.AccountNo = this->_accountNo;
-	memcpy_s(pMsg->Message, dfDBWRITER_MSG_MAX, &data, sizeof(stDB_ACCOUNT_WRITE_STATUS_LOGOUT_in));
-
+	stDB_ACCOUNT_WRITE_STATUS_LOGOUT_in message;
+	message.AccountNo = this->_accountNo;
+	memcpy_s(pMsg->Message, dfDBWRITER_MSG_MAX, &message, sizeof(stDB_ACCOUNT_WRITE_STATUS_LOGOUT_in));
 	this->_pGameServer->_databaseMsgQueue.Enqueue(pMsg);
-#pragma endregion db_gamestatus_init
 
 	return true;
 }
@@ -1048,7 +1138,7 @@ void CGameServer::CPlayer::PacketProc_ReqEcho(CPacket *pRecvPacket)
 // MakePacket
 /////////////////////////////////////////////////////////////////////////
 #pragma region makepacket_auth
-void CGameServer::CPlayer::MakePacket_ResLogin(CPacket *pSendPacket, BYTE byStatus, __int64 iAccountNo)
+void CGameServer::CPlayer::MakePacket_ResLogin(CPacket *pSendPacket, BYTE byStatus, CLIENT_ID iAccountNo)
 {
 	*pSendPacket << (WORD)en_PACKET_CS_GAME_RES_LOGIN;
 	*pSendPacket << byStatus;
@@ -1065,7 +1155,7 @@ void CGameServer::CPlayer::MakePacket_ResCharacterSelect(CPacket *pSendPacket, B
 #pragma endregion makepacket_auth
 
 #pragma region makepacket_game
-void CGameServer::CPlayer::MakePacket_CreateCharacter(CPacket *pSendPacket, __int64 clientID, BYTE characterType, wchar_t *szNickname, float PosX, float PosY, WORD rotation, int hp, BYTE party)
+void CGameServer::CPlayer::MakePacket_CreateCharacter(CPacket *pSendPacket, CLIENT_ID clientID, BYTE characterType, wchar_t *szNickname, float PosX, float PosY, WORD rotation, int hp, BYTE party)
 {
 	*pSendPacket << (WORD)en_PACKET_CS_GAME_RES_CREATE_MY_CHARACTER;
 	*pSendPacket << clientID;
@@ -1083,7 +1173,7 @@ void CGameServer::CPlayer::MakePacket_CreateCharacter(CPacket *pSendPacket, __in
 	return;
 }
 
-void CGameServer::CPlayer::MakePacket_CreateOtherCharacter(CPacket *pSendPacket, __int64 clientID, BYTE characterType, wchar_t *szNickname, float PosX, float PosY, WORD rotation, BYTE respawn, BYTE die, int hp, BYTE party, BYTE firstAction)
+void CGameServer::CPlayer::MakePacket_CreateOtherCharacter(CPacket *pSendPacket, CLIENT_ID clientID, BYTE characterType, wchar_t *szNickname, float PosX, float PosY, WORD rotation, BYTE respawn, BYTE die, int hp, BYTE party, BYTE firstAction)
 {
 	*pSendPacket << (WORD)en_PACKET_CS_GAME_RES_CREATE_OTHER_CHARACTER;
 	*pSendPacket << clientID;

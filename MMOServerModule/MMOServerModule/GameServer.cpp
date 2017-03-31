@@ -12,9 +12,9 @@ CGameServer::CGameServer(int iClientMax) : CMMOServer(iClientMax)
 	this->_lanClient_Agent = new CLanClient_Agent(this);
 
 	// Database
-	this->_database_Account = new AccountDB(g_Config.szAccountDBIP, g_Config.szAccountDBUser, g_Config.szAccountDBPassword, g_Config.szAccountDBName, g_Config.iAccountDBPort);
-	this->_database_Game = new GameDB(g_Config.szGameDBIP, g_Config.szGameDBUser, g_Config.szGameDBPassword, g_Config.szGameDBName, g_Config.iGameDBPort);
-	this->_database_Log = new LogDB(g_Config.szLogDBIP, g_Config.szLogDBUser, g_Config.szLogDBPassword, g_Config.szLogDBName, g_Config.iLogDBPort);
+	this->_database_Account = new AccountDB(g_Config.szAccountDBIP, g_Config.szAccountDBUser, g_Config.szAccountDBPassword, g_Config.szAccountDBName, g_Config.iAccountDBPort, this);
+	this->_database_Game = new GameDB(g_Config.szGameDBIP, g_Config.szGameDBUser, g_Config.szGameDBPassword, g_Config.szGameDBName, g_Config.iGameDBPort, this);
+	this->_database_Log = new LogDB(g_Config.szLogDBIP, g_Config.szLogDBUser, g_Config.szLogDBPassword, g_Config.szLogDBName, g_Config.iLogDBPort, this);
 
 	UINT64 currTick = GetTickCount64();
 	this->_heartBeatTick = currTick;
@@ -300,6 +300,7 @@ bool CGameServer::DatabaseWriteThread_update(void)
 
 				case dfDBWRITER_TYPE_GAME:
 				{
+					this->_database_Game->QueryDB(pMsg->Type_Message, pMsg->Message, NULL);
 					break;
 				}
 
@@ -318,9 +319,13 @@ bool CGameServer::DatabaseWriteThread_update(void)
 			cmpTick = time(NULL);
 			if (cmpTick - dbHeartbeatTick >= dfDATABASETHREAD_HEARTBEAT_TICK)
 			{
-				this->_lanClient_Login->SendPacket_HeartBeat(dfTHREAD_TYPE_DB);
+				if (true == this->_lanClient_Login->_bConnected)
+					this->_lanClient_Login->SendPacket_HeartBeat(dfTHREAD_TYPE_DB);
+				
 				dbHeartbeatTick = cmpTick;
 			}
+
+			this->_databaseMsgPool.Free(pMsg);
 		}
 		else
 			Sleep(dfTHREAD_UPDATE_TICK_DATABASE);

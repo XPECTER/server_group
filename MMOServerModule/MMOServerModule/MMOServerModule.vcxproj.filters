@@ -75,9 +75,6 @@
     <ClInclude Include="DBTypeEnum.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="DBConnector.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="LanClient_Login.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -100,6 +97,18 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="Pattern.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\mylibrary\DBConnector.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Database_Account.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Database_Game.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Database_Log.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
@@ -152,9 +161,6 @@
     <ClCompile Include="GameServer.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="DBConnector.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="LanClient_Login.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
@@ -183,6 +189,18 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="Pattern.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\mylibrary\DBConnector.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Database_Account.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Database_Game.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Database_Log.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

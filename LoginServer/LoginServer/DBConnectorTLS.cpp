@@ -1,5 +1,4 @@
 #include "stdafx.h"
-#include "DBConnect.h"
 #include "DBConnectorTLS.h"
 #include "LoginServer.h"
 #include "main.h"

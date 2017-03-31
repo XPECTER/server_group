@@ -1,6 +1,8 @@
 #pragma once
 
-class CDBConnectorTLS : public CDBConnector
+#include "DBConnect.h"
+
+class CDBConnectorTLS
 {
 public:
 	CDBConnectorTLS();

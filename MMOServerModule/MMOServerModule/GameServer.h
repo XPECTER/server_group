@@ -6,8 +6,13 @@
 #include "LanClient_Monitoring.h"
 #include "Field.h"
 #include "JumpPointSearch.h"
-#include "DBConnector.h"
 #include "Pattern.h"
+
+#include "DBTypeEnum.h"
+#include "Database_Account.h"
+#include "Database_Game.h"
+#include "Database_Log.h"
+
 
 #define dfAUTH_PACKET_PROC_REPEAT 1
 #define dfGAME_PACKET_PROC_REPEAT 3
@@ -134,7 +139,7 @@ protected:
 		//		BYTE		: 로그인 가능 여부(0 - 실패, 1 - 1번파티, 2 - 2번파티, 3 - 버전 다름)
 		//		__int64		: Account번호
 		//////////////////////////////////////////////////////////
-		void MakePacket_ResLogin(CPacket *pSendPacket, BYTE byStatus, __int64 iAccountNo);
+		void MakePacket_ResLogin(CPacket *pSendPacket, BYTE byStatus, CLIENT_ID iAccountNo);
 
 		//////////////////////////////////////////////////////////
 		//	캐릭터 선택 응답 패킷 만들기
@@ -283,6 +288,9 @@ protected:
 		int			_attackType;					// 공격 타입 (1번, 2번이 있고 3번은 추가 될지 모르겠음)
 		ULONGLONG	_nextAttackTime;
 
+		int			_killCount;
+		int			_killCount_guest;
+
 		BYTE	_byFirstAction;					// 처음 액션을 하지 않았으면 공격 대상이 되지 않음.
 	};
 
@@ -413,6 +421,11 @@ private:
 	/////////////////////////////////////////////////////////////
 	void CollectRealUserSectorPos(int iSectorX, int iSectorY);
 
+public:
+	AccountDB	*_database_Account;							// Account Database
+	GameDB		*_database_Game;							// Game Database
+	LogDB		*_database_Log;								// Log Database
+
 private:
 	CLanClient_Login *_lanClient_Login;						// 로그인 서버로 접속할 클라이언트
 	CLanClient_Agent *_lanClient_Agent;						// 에이전트로 접속할 클라이언트
@@ -425,9 +438,7 @@ private:
 
 	UINT64 _heartBeatTick;									// 하트비트용
 
-	AccountDB	*_database_Account;							// Account Database
-	GameDB		*_database_Game;							// Game Database
-	LogDB		*_database_Log;								// Log Database
+	
 	
 	CMemoryPool<st_DBWRITER_MSG> _databaseMsgPool;			// 데이터베이스 메시지 풀
 	CLockFreeQueue<st_DBWRITER_MSG *> _databaseMsgQueue;	// 데이터베이스 메시지 큐

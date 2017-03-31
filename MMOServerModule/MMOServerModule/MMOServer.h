@@ -10,7 +10,11 @@
 #define dfTHREAD_UPDATE_TICK_GAME 10
 #define dfTHREAD_UPDATE_TICK_SEND 1
 
-
+struct st_ACCEPT_CLIENT_INFO
+{
+	SOCKET _clientSock;
+	SOCKADDR_IN _clientAddr;
+};
 
 class CMMOServer
 {
@@ -23,12 +27,6 @@ public:
 	};
 
 protected:
-	struct st_ACCEPT_CLIENT_INFO
-	{
-		SOCKET _clientSock;
-		SOCKADDR_IN _clientAddr;
-	};
-
 	class CSession
 	{
 	public:

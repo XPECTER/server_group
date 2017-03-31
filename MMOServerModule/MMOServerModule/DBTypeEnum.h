@@ -20,7 +20,7 @@ enum en_DB_ACTION_TYPE
 	enDB_GAME_WRITE_LOG_LEAVE,						// 게임모드에서 게임서버를 나갈 때 저장.
 													// gameDB 에 저장할 내용은 없으나 로그를 남기기 위함
 
-	enDB_GAME_WRITE_PLAYER_DIE,					// 플레이어 돌아가심 / die 카운트 + 1
+	enDB_GAME_WRITE_PLAYER_DIE,						// 플레이어 돌아가심 / die 카운트 + 1
 	enDB_GAME_WRITE_PLAYER_KILL,					// 플레이어 적군 킬 / kill 카운트 + 1
 													// 대상이 게스트 계정이라면 게스트 킬로 저장
 													// 대상이나 자신이 더미라면 일단 저장으로 진행 후
@@ -29,8 +29,6 @@ enum en_DB_ACTION_TYPE
 	enDB_ACCOUNT_WRITE_STATUS_LOGOUT,				// 플레이어 로그아웃시 status 를 로그아웃 상태로 변경
 	enDB_ACCOUNT_READ_STATUS_INIT,
 };
-
-
 
 
 
@@ -56,9 +54,8 @@ struct stDB_ACCOUNT_READ_LOGIN_SESSION_out
 
 struct stDB_ACCOUNT_READ_USER_in
 {
-	__int64				AccountNo;
-
-	//CLIENT_CONNECT_INFO		ConnectInfo;
+	__int64						AccountNo;
+	st_ACCEPT_CLIENT_INFO		ConnectInfo;		// 로그용
 };
 
 
@@ -79,8 +76,8 @@ struct stDB_ACCOUNT_READ_USER_out
 
 struct stDB_GAME_READ_PLAYER_CHECK_in
 {
-	__int64					AccountNo;
-	//CLIENT_CONNECT_INFO		ConnectInfo;
+	__int64						AccountNo;
+	st_ACCEPT_CLIENT_INFO		ConnectInfo;
 };
 
 

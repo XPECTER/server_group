@@ -148,6 +148,7 @@
     <ClInclude Include="..\..\mylibrary\APIHook.h" />
     <ClInclude Include="..\..\mylibrary\ConfigParser.h" />
     <ClInclude Include="..\..\mylibrary\CrashDump.h" />
+    <ClInclude Include="..\..\mylibrary\DBConnector.h" />
     <ClInclude Include="..\..\mylibrary\LanClient.h" />
     <ClInclude Include="..\..\mylibrary\LockFreeQueue.h" />
     <ClInclude Include="..\..\mylibrary\LockFreeStack.h" />
@@ -159,7 +160,9 @@
     <ClInclude Include="..\..\mylibrary\StreamQueue.h" />
     <ClInclude Include="CommonProtocol.h" />
     <ClInclude Include="Config.h" />
-    <ClInclude Include="DBConnector.h" />
+    <ClInclude Include="Database_Account.h" />
+    <ClInclude Include="Database_Game.h" />
+    <ClInclude Include="Database_Log.h" />
     <ClInclude Include="DBTypeEnum.h" />
     <ClInclude Include="defines.h" />
     <ClInclude Include="GameServer.h" />
@@ -188,6 +191,9 @@
     <ClCompile Include="..\..\mylibrary\CrashDump.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\mylibrary\DBConnector.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\..\mylibrary\LanClient.cpp">
@@ -235,7 +241,9 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="DBConnector.cpp" />
+    <ClCompile Include="Database_Account.cpp" />
+    <ClCompile Include="Database_Game.cpp" />
+    <ClCompile Include="Database_Log.cpp" />
     <ClCompile Include="GameServer.cpp" />
     <ClCompile Include="GlobalTime.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
